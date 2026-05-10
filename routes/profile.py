@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
-from models import db, User, Trip, Stop, City
+from models import db, User, Trip, Stop, City, PostLike, CommunityPost
 import bcrypt
 
 profile_bp = Blueprint('profile', __name__)
@@ -44,6 +44,12 @@ def profile():
                 flash('Password changed.', 'success')
 
         elif action == 'delete_account':
+            # Delete post likes tied to user's posts (old FK has no CASCADE)
+            user_post_ids = [p.id for p in CommunityPost.query.filter_by(user_id=current_user.id).all()]
+            if user_post_ids:
+                PostLike.query.filter(PostLike.post_id.in_(user_post_ids)).delete(synchronize_session=False)
+            # Delete likes the user gave on others' posts
+            PostLike.query.filter_by(user_id=current_user.id).delete(synchronize_session=False)
             db.session.delete(current_user)
             db.session.commit()
             flash('Account deleted.', 'info')

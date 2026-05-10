@@ -1,9 +1,9 @@
 import os
 import uuid
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, CommunityPost, City, Trip
+from models import db, CommunityPost, PostLike, City, Trip
 
 community_bp = Blueprint('community', __name__)
 
@@ -43,9 +43,11 @@ def feed():
     posts = query.limit(50).all()
     cities = City.query.order_by(City.name).all()
     user_trips = Trip.query.filter_by(user_id=current_user.id).order_by(Trip.created_at.desc()).all()
+    liked_ids = {pl.post_id for pl in PostLike.query.filter_by(user_id=current_user.id).all()}
 
     return render_template('community.html', posts=posts, cities=cities,
-                           q=q, city_filter=city_filter, user_trips=user_trips)
+                           q=q, city_filter=city_filter, user_trips=user_trips,
+                           liked_ids=liked_ids)
 
 
 @community_bp.route('/community/post', methods=['POST'])
@@ -80,9 +82,20 @@ def create_post():
 @login_required
 def like_post(post_id):
     post = CommunityPost.query.get_or_404(post_id)
-    post.likes = (post.likes or 0) + 1
+    existing = PostLike.query.filter_by(user_id=current_user.id, post_id=post_id).first()
+    if existing:
+        db.session.delete(existing)
+        post.likes = max(0, (post.likes or 1) - 1)
+        liked = False
+    else:
+        like = PostLike()
+        like.user_id = current_user.id
+        like.post_id = post_id
+        db.session.add(like)
+        post.likes = (post.likes or 0) + 1
+        liked = True
     db.session.commit()
-    return redirect(request.referrer or url_for('community.feed'))
+    return jsonify({'likes': post.likes, 'liked': liked})
 
 
 @community_bp.route('/community/post/<int:post_id>/delete', methods=['POST'])

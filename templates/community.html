@@ -184,15 +184,16 @@
 
         <!-- Actions -->
         <div class="flex items-center gap-3 mt-4 pt-4 border-t" style="border-color:#f0ede8">
-          <form method="POST" action="{{ url_for('community.like_post', post_id=post.id) }}">
-            <button type="submit"
-                    class="flex items-center gap-1.5 text-sm font-semibold transition group"
-                    style="color:#8a8680"
-                    onmouseover="this.style.color='#b91c1c'" onmouseout="this.style.color='#8a8680'">
-              <svg class="w-4 h-4 group-hover:scale-110 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-              {{ post.likes or 0 }}
-            </button>
-          </form>
+          <button type="button"
+                  onclick="toggleLike(this, {{ post.id }})"
+                  data-liked="{{ 'true' if post.id in liked_ids else 'false' }}"
+                  class="flex items-center gap-1.5 text-sm font-semibold transition"
+                  style="color:{{ '#c2410c' if post.id in liked_ids else '#8a8680' }}">
+            <svg class="w-4 h-4 transition-transform" fill="{{ 'currentColor' if post.id in liked_ids else 'none' }}" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+            </svg>
+            <span>{{ post.likes or 0 }}</span>
+          </button>
           <span class="flex-1"></span>
           {% if post.user_id == current_user.id %}
           <form method="POST" action="{{ url_for('community.delete_post', post_id=post.id) }}"
@@ -224,4 +225,25 @@
   {% endif %}
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleLike(btn, postId) {
+  fetch(`/community/post/${postId}/like`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => r.json())
+    .then(d => {
+      const svg = btn.querySelector('svg');
+      const span = btn.querySelector('span');
+      span.textContent = d.likes;
+      if (d.liked) {
+        btn.style.color = '#c2410c';
+        svg.setAttribute('fill', 'currentColor');
+      } else {
+        btn.style.color = '#8a8680';
+        svg.setAttribute('fill', 'none');
+      }
+    });
+}
+</script>
 {% endblock %}

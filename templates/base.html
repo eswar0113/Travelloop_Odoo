@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Traveloop{% endblock %}</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+  <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}" />
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -21,9 +23,11 @@
     <a href="{{ url_for('trips.dashboard') if current_user.is_authenticated else url_for('auth.login') }}"
        class="flex items-center gap-2.5 shrink-0">
       <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#141413">
-        <svg style="width:16px;height:16px;color:#fff" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+        <svg style="width:18px;height:18px" fill="none" viewBox="0 0 24 24" stroke="#c2410c" stroke-width="1.5">
+          <circle cx="12" cy="12" r="9"/>
+          <ellipse cx="12" cy="12" rx="3.5" ry="9"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <path d="M4.5 8.5h15M4.5 15.5h15" stroke="#c2410c" stroke-width="1"/>
         </svg>
       </div>
       <span style="font-weight:800;font-size:1.0625rem;color:#141413;letter-spacing:-.02em">

@@ -150,6 +150,12 @@ class TripNote(db.Model):
     linked_stop = db.relationship('Stop')
 
 
+class PostLike(db.Model):
+    __tablename__ = 'post_likes'
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('community_posts.id', ondelete='CASCADE'), primary_key=True)
+
+
 class CommunityPost(db.Model):
     __tablename__ = 'community_posts'
     id = db.Column(db.Integer, primary_key=True)

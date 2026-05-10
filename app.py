@@ -57,6 +57,7 @@ def create_app():
             'ALTER TABLE users ADD COLUMN city VARCHAR(100)',
             'ALTER TABLE users ADD COLUMN country VARCHAR(100)',
             'ALTER TABLE users ADD COLUMN bio TEXT',
+            'CREATE TABLE IF NOT EXISTS post_likes (user_id INTEGER REFERENCES users(id), post_id INTEGER REFERENCES community_posts(id), PRIMARY KEY (user_id, post_id))',
         ]
         from sqlalchemy import text
         for sql in migrations:
