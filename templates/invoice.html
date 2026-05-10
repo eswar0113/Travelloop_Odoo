@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block title %}Invoice — {{ trip.name }}{% endblock %}
+
+{% block head %}
+<style>
+  @media print {
+    nav, .no-print { display: none !important; }
+    body { background: white !important; }
+    .premium-card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-sm text-slate-400 mb-6 no-print">
+    <a href="{{ url_for('trips.view_trip', trip_id=trip.id) }}" class="hover:text-sky-500 transition font-medium">{{ trip.name }}</a>
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <a href="{{ url_for('budget.budget', trip_id=trip.id) }}" class="hover:text-sky-500 transition font-medium">Budget</a>
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <span class="text-slate-600 font-medium">Invoice</span>
+  </div>
+
+  <div class="premium-card overflow-hidden">
+
+    <!-- Invoice Header -->
+    <div class="p-8 border-b border-slate-100" style="background:linear-gradient(135deg,#1e293b,#1e3a5f)">
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="flex items-center gap-2.5 mb-4">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center shadow-md bg-white/15">
+              <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
+              </svg>
+            </div>
+            <span class="font-extrabold text-xl text-white tracking-tight">Traveloop</span>
+          </div>
+          <h1 class="text-3xl font-extrabold text-white mb-1">Travel Invoice</h1>
+          <p class="text-sky-300 text-sm">{{ trip.name }}</p>
+        </div>
+        <div class="text-right text-sky-200 text-sm space-y-1">
+          <p><span class="text-sky-400 font-semibold">Invoice #</span> {{ invoice_num }}</p>
+          <p><span class="text-sky-400 font-semibold">Date</span> {{ trip.created_at.strftime('%b %d, %Y') }}</p>
+          {% if trip.start_date and trip.end_date %}
+          <p><span class="text-sky-400 font-semibold">Travel</span> {{ trip.start_date.strftime('%b %d') }} – {{ trip.end_date.strftime('%b %d, %Y') }}</p>
+          <p><span class="text-sky-400 font-semibold">Duration</span> {{ trip.total_days }} days</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Billed To -->
+    <div class="px-8 py-5 bg-slate-50 border-b border-slate-100">
+      <p class="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-1">Prepared for</p>
+      <p class="font-extrabold text-slate-800 text-base">{{ trip.user.name }}</p>
+      <p class="text-slate-500 text-sm">{{ trip.user.email }}</p>
+      {% if trip.user.city or trip.user.country %}
+      <p class="text-slate-400 text-sm">{{ [trip.user.city, trip.user.country]|select|join(', ') }}</p>
+      {% endif %}
+    </div>
+
+    <!-- Line Items Table -->
+    <div class="px-8 py-6">
+      {% if line_items %}
+      <table class="w-full text-sm mb-6">
+        <thead>
+          <tr class="border-b-2 border-slate-200">
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide w-8">#</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Category</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Description</th>
+            <th class="pb-3 text-right font-semibold text-slate-500 text-xs uppercase tracking-wide w-20">Unit Cost</th>
+            <th class="pb-3 text-right font-semibold text-slate-500 text-xs uppercase tracking-wide w-20">Amount</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for item in line_items %}
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 text-slate-400 text-xs">{{ loop.index }}</td>
+            <td class="py-3">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold capitalize
+                {% if item.category == 'transport' %}bg-blue-100 text-blue-700
+                {% elif item.category == 'stay' %}bg-purple-100 text-purple-700
+                {% elif item.category == 'meals' %}bg-amber-100 text-amber-700
+                {% elif item.category in ['activities','activity','sightseeing','adventure','culture'] %}bg-emerald-100 text-emerald-700
+                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                {{ item.category|capitalize }}
+              </span>
+            </td>
+            <td class="py-3 text-slate-700 font-medium">{{ item.description }}</td>
+            <td class="py-3 text-right text-slate-600">${{ '%.2f'|format(item.unit_cost) }}</td>
+            <td class="py-3 text-right font-bold text-slate-800">${{ '%.2f'|format(item.amount) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Totals -->
+      <div class="flex justify-end">
+        <div class="w-64 space-y-2">
+          <div class="flex justify-between text-sm text-slate-600 py-1">
+            <span>Subtotal</span>
+            <span>${{ '%.2f'|format(grand_total) }}</span>
+          </div>
+          {% if trip.budget_target %}
+          <div class="flex justify-between text-sm py-1
+                      {% if grand_total > trip.budget_target %}text-red-500{% else %}text-emerald-600{% endif %}">
+            <span>Budget Target</span>
+            <span>${{ '%.2f'|format(trip.budget_target) }}</span>
+          </div>
+          {% if grand_total > trip.budget_target %}
+          <div class="flex justify-between text-sm text-red-500 py-1">
+            <span>Over Budget</span>
+            <span>+${{ '%.2f'|format(grand_total - trip.budget_target) }}</span>
+          </div>
+          {% else %}
+          <div class="flex justify-between text-sm text-emerald-600 py-1">
+            <span>Under Budget</span>
+            <span>-${{ '%.2f'|format(trip.budget_target - grand_total) }}</span>
+          </div>
+          {% endif %}
+          {% endif %}
+          <div class="border-t-2 border-slate-200 pt-2 flex justify-between font-extrabold text-lg text-slate-800">
+            <span>Total</span>
+            <span class="gradient-text">${{ '%.2f'|format(grand_total) }}</span>
+          </div>
+          {% if trip.total_days %}
+          <div class="flex justify-between text-xs text-slate-400 pt-1">
+            <span>Avg per day</span>
+            <span>${{ '%.2f'|format(grand_total / trip.total_days) }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% else %}
+      <div class="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
+        <div class="text-4xl mb-3">📋</div>
+        <p class="text-slate-600 font-semibold">No expenses yet</p>
+        <p class="text-slate-400 text-sm mt-1">Add budget items or activities to generate an invoice.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div class="px-8 py-5 bg-slate-50 border-t border-slate-100 text-xs text-slate-400 text-center">
+      Generated by Traveloop · {{ trip.user.email }} · {{ invoice_num }}
+    </div>
+
+  </div>
+
+  <!-- Action buttons -->
+  <div class="flex items-center gap-3 mt-6 no-print">
+    <button onclick="window.print()"
+            class="btn-premium">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+      Print / Save as PDF
+    </button>
+    <a href="{{ url_for('budget.budget', trip_id=trip.id) }}"
+       class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold text-sm transition flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      Back to Budget
+    </a>
+  </div>
+
+</div>
+{% endblock %}

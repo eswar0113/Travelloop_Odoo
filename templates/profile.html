@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+{% block title %}Profile & Settings — Traveloop{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="{ tab: 'profile' }">
+
+  <!-- Header -->
+  <div class="mb-7 fade-up">
+    <h1 class="text-3xl font-extrabold text-slate-800">Profile & Settings</h1>
+    <p class="text-slate-500 mt-1 text-sm">Manage your account, preferences, and saved destinations.</p>
+  </div>
+
+  <!-- Avatar + stats hero -->
+  <div class="hero-gradient rounded-2xl p-6 mb-6 shadow-lg fade-up">
+    <div class="flex flex-wrap items-center gap-5">
+      <div class="relative shrink-0">
+        <div class="w-20 h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-white/30"
+             id="avatar-wrap"
+             style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+          {% if user.photo_url %}
+          <img src="{{ user.photo_url }}" class="w-full h-full object-cover" alt="{{ user.name }}" id="avatar-img">
+          {% else %}
+          <div class="w-full h-full flex items-center justify-center text-3xl font-extrabold text-white" id="avatar-initials">
+            {{ user.name[0].upper() }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="flex-1 text-white">
+        <h2 class="text-xl font-extrabold">{{ user.name }}</h2>
+        <p class="text-sky-200 text-sm">{{ user.email }}</p>
+        <p class="text-sky-300 text-xs mt-0.5">Member since {{ user.created_at.strftime('%B %Y') }}</p>
+      </div>
+    </div>
+    <!-- Stats row -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-5">
+      {% for val, label in [
+        (user.trips|length, 'Trips'),
+        (total_stops, 'Cities'),
+        (total_days, 'Days'),
+        (total_activities, 'Activities'),
+        (public_trips, 'Public'),
+      ] %}
+      <div class="bg-white/10 backdrop-blur rounded-xl p-3 text-center border border-white/10">
+        <p class="text-2xl font-extrabold text-white">{{ val }}</p>
+        <p class="text-sky-200 text-xs font-medium mt-0.5">{{ label }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6">
+    {% for t, label, icon in [
+      ('profile', 'Profile', '👤'),
+      ('trips', 'My Trips', '🗺️'),
+      ('password', 'Password', '🔒'),
+      ('destinations', 'Destinations', '📍'),
+      ('danger', 'Account', '⚙️'),
+    ] %}
+    <button @click="tab = '{{ t }}'"
+            :class="tab === '{{ t }}' ? 'bg-white shadow text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-700'"
+            class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm transition">
+      <span>{{ icon }}</span>
+      <span class="hidden sm:inline">{{ label }}</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- ── Profile Tab ── -->
+  <div x-show="tab === 'profile'"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0 translate-y-1"
+       x-transition:enter-end="opacity-100 translate-y-0">
+    <div class="premium-card p-6" x-data="{ photoUrl: '{{ user.photo_url or '' }}' }">
+      <h2 class="text-base font-extrabold text-slate-800 mb-5">Personal Information</h2>
+      <form method="POST" action="{{ url_for('profile.profile') }}" class="space-y-4">
+        <input type="hidden" name="action" value="update_profile">
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Full Name</label>
+          <input type="text" name="name" value="{{ user.name }}" required class="input-premium">
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">
+            Photo URL
+            <span class="text-slate-400 font-normal text-xs ml-1">(optional — paste any image link)</span>
+          </label>
+          <div class="flex gap-3 items-start">
+            <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-slate-200"
+                 style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+              <img x-show="photoUrl" :src="photoUrl" class="w-full h-full object-cover"
+                   @error="$el.style.display='none'">
+              <div x-show="!photoUrl" class="w-full h-full flex items-center justify-center text-white font-bold text-lg">
+                {{ user.name[0].upper() }}
+              </div>
+            </div>
+            <input type="url" name="photo_url" x-model="photoUrl"
+                   value="{{ user.photo_url or '' }}"
+                   class="input-premium flex-1"
+                   placeholder="https://example.com/photo.jpg">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Phone</label>
+            <input type="tel" name="phone" value="{{ user.phone or '' }}" class="input-premium" placeholder="+1 555 000 0000">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">City</label>
+            <input type="text" name="city" value="{{ user.city or '' }}" class="input-premium" placeholder="Your city">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Country</label>
+          <input type="text" name="country" value="{{ user.country or '' }}" class="input-premium" placeholder="Your country">
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Bio</label>
+          <textarea name="bio" rows="3" class="input-premium resize-none" placeholder="Tell the community about yourself…">{{ user.bio or '' }}</textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Language</label>
+          <select name="language" class="input-premium">
+            {% for code, lang in [('en','🇬🇧 English'), ('es','🇪🇸 Español'), ('fr','🇫🇷 Français'), ('de','🇩🇪 Deutsch'), ('ja','🇯🇵 日本語'), ('pt','🇧🇷 Português')] %}
+            <option value="{{ code }}" {{ 'selected' if user.language == code }}>{{ lang }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button type="submit" class="btn-premium">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          Save Changes
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Trips Tab ── -->
+  <div x-show="tab === 'trips'"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0 translate-y-1"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       class="space-y-6">
+
+    {% set today_date = namespace(val=none) %}
+    {% set preplanned = user.trips | selectattr('start_date') | selectattr('end_date') | list %}
+    {% set upcoming_trips = [] %}
+    {% set prev_trips = [] %}
+    {% set plan_trips = user.trips | rejectattr('start_date') | list %}
+
+    <!-- Preplanned / Upcoming -->
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-4">Preplanned Trips</h2>
+      {% set ns_up = namespace(found=false) %}
+      {% for trip in user.trips | sort(attribute='start_date', reverse=false) %}
+      {% if trip.start_date %}
+      {% set ns_up.found = true %}
+      <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-sky-50 transition mb-2">
+        <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-sky-400 to-indigo-500">
+          {% if trip.cover_photo %}
+          <img src="{{ trip.cover_photo }}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+          {% endif %}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-sm text-slate-700 truncate">{{ trip.name }}</p>
+          <p class="text-xs text-slate-400">
+            {{ trip.start_date.strftime('%b %d, %Y') }}{% if trip.end_date %} – {{ trip.end_date.strftime('%b %d, %Y') }}{% endif %}
+            · {{ trip.stops|length }} stop{{ 's' if trip.stops|length != 1 }}
+          </p>
+        </div>
+        <a href="{{ url_for('trips.view_trip', trip_id=trip.id) }}"
+           class="px-3 py-1.5 text-xs font-bold bg-sky-100 text-sky-700 rounded-lg hover:bg-sky-200 transition shrink-0">
+          View
+        </a>
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% if not preplanned %}
+      <p class="text-slate-400 text-sm italic">No trips with dates yet.</p>
+      {% endif %}
+    </div>
+
+    <!-- Planning (no dates) -->
+    {% if plan_trips %}
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-4">In Planning</h2>
+      {% for trip in plan_trips %}
+      <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-sky-50 transition mb-2">
+        <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-slate-400 to-slate-500">
+          {% if trip.cover_photo %}
+          <img src="{{ trip.cover_photo }}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+          {% endif %}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-sm text-slate-700 truncate">{{ trip.name }}</p>
+          <p class="text-xs text-slate-400 italic">Dates not set · {{ trip.stops|length }} stop{{ 's' if trip.stops|length != 1 }}</p>
+        </div>
+        <a href="{{ url_for('trips.view_trip', trip_id=trip.id) }}"
+           class="px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition shrink-0">
+          View
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- ── Password Tab ── -->
+  <div x-show="tab === 'password'"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0 translate-y-1"
+       x-transition:enter-end="opacity-100 translate-y-0">
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-5">Change Password</h2>
+      <form method="POST" action="{{ url_for('profile.profile') }}" class="space-y-4">
+        <input type="hidden" name="action" value="change_password">
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Current Password</label>
+          <input type="password" name="old_password" required class="input-premium" autocomplete="current-password">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">New Password</label>
+            <input type="password" name="new_password" required minlength="6" class="input-premium" autocomplete="new-password">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Confirm New</label>
+            <input type="password" name="confirm_password" required class="input-premium" autocomplete="new-password">
+          </div>
+        </div>
+        <button type="submit"
+                class="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-6 rounded-xl transition shadow-sm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          Update Password
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Saved Destinations Tab ── -->
+  <div x-show="tab === 'destinations'"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0 translate-y-1"
+       x-transition:enter-end="opacity-100 translate-y-0">
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-1">Saved Destinations</h2>
+      <p class="text-sm text-slate-400 mb-5">Cities you've added to your trips.</p>
+      {% if saved_cities %}
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {% for city in saved_cities %}
+        <a href="{{ url_for('cities.search_page') }}?q={{ city.name }}"
+           class="group flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-sky-300 hover:bg-sky-50 transition">
+          <div class="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-gradient-to-br from-sky-400 to-indigo-500">
+            {% if city.image_url %}
+            <img src="{{ city.image_url }}" class="w-full h-full object-cover" alt="{{ city.name }}" onerror="this.style.display='none'">
+            {% endif %}
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-bold text-slate-700 truncate group-hover:text-sky-600 transition">{{ city.name }}</p>
+            <p class="text-xs text-slate-400 truncate">{{ city.country }}</p>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
+        <div class="text-4xl mb-3">🗺️</div>
+        <p class="text-slate-600 font-semibold">No destinations yet</p>
+        <p class="text-slate-400 text-sm mt-1 mb-4">Start planning a trip to see your cities here.</p>
+        <a href="{{ url_for('cities.search_page') }}" class="btn-premium inline-flex text-sm">Explore Cities</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Danger / Account Tab ── -->
+  <div x-show="tab === 'danger'"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0 translate-y-1"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       class="space-y-4">
+
+    <!-- Your trips -->
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-4">Your Trips ({{ user.trips|length }})</h2>
+      {% if user.trips %}
+      <div class="space-y-2">
+        {% for trip in user.trips|sort(attribute='created_at', reverse=True) %}
+        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-sky-50 transition">
+          <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
+               style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+            {{ loop.index }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-bold text-sm text-slate-700 truncate">{{ trip.name }}</p>
+            <p class="text-xs text-slate-400">{{ trip.stops|length }} stops · {{ trip.total_days }} days</p>
+          </div>
+          {% if trip.is_public %}
+          <span class="badge bg-emerald-100 text-emerald-600 text-xs">Public</span>
+          {% endif %}
+          <a href="{{ url_for('trips.view_trip', trip_id=trip.id) }}"
+             class="text-sky-500 hover:text-sky-600 text-xs font-semibold">View →</a>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-slate-400 text-sm">No trips yet.</p>
+      {% endif %}
+    </div>
+
+    <!-- Delete account -->
+    <div class="premium-card p-6 border border-red-100">
+      <h2 class="text-base font-extrabold text-red-600 mb-2 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        Danger Zone
+      </h2>
+      <p class="text-sm text-slate-500 mb-4">Deleting your account is permanent and cannot be undone. All trips, notes, and data will be erased.</p>
+      <form method="POST" action="{{ url_for('profile.profile') }}"
+            onsubmit="return confirm('Are you absolutely sure? This deletes your account and ALL data permanently.')">
+        <input type="hidden" name="action" value="delete_account">
+        <button type="submit"
+                class="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-6 rounded-xl transition shadow-sm text-sm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Delete My Account Permanently
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

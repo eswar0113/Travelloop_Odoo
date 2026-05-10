@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if trip else 'Create' }} Trip — Traveloop{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 py-10">
+
+  <!-- Header -->
+  <div class="mb-8 fade-up">
+    <a href="{{ url_for('trips.my_trips') }}" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-sky-500 transition mb-5 group">
+      <svg class="w-4 h-4 group-hover:-translate-x-0.5 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      Back to My Trips
+    </a>
+    <h1 class="text-3xl font-extrabold text-slate-800">
+      {{ 'Edit Trip' if trip else 'Create a New Trip' }}
+    </h1>
+    <p class="text-slate-500 mt-1">
+      {{ 'Update your trip details.' if trip else 'Give your adventure a name and dates to get started.' }}
+    </p>
+  </div>
+
+  <div class="premium-card p-8 fade-up" style="animation-delay:0.1s">
+    <form method="POST"
+          action="{{ url_for('trips.edit_trip', trip_id=trip.id) if trip else url_for('trips.create_trip') }}"
+          class="space-y-6">
+
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Trip Name <span class="text-red-400">*</span></label>
+        <input type="text" name="name" required
+               value="{{ trip.name if trip else '' }}"
+               class="input-premium"
+               placeholder="e.g. Europe Summer 2025, Southeast Asia Backpacking">
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Start Date</label>
+          <input type="date" name="start_date"
+                 value="{{ trip.start_date.strftime('%Y-%m-%d') if trip and trip.start_date else '' }}"
+                 class="input-premium">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-slate-700 mb-2">End Date</label>
+          <input type="date" name="end_date"
+                 value="{{ trip.end_date.strftime('%Y-%m-%d') if trip and trip.end_date else '' }}"
+                 class="input-premium">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Description</label>
+        <textarea name="description" rows="3"
+                  class="input-premium resize-none"
+                  placeholder="What's the vibe of this trip? Beach holiday, culture tour, backpacking adventure...">{{ trip.description if trip else '' }}</textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-slate-700 mb-2">Cover Photo URL <span class="text-slate-400 font-normal text-xs">(optional)</span></label>
+        <input type="url" name="cover_photo"
+               value="{{ trip.cover_photo if trip else '' }}"
+               id="cover_url"
+               class="input-premium"
+               placeholder="https://images.unsplash.com/...">
+        <div id="cover_preview" class="mt-3 hidden">
+          <img id="cover_img" src="" class="w-full h-48 object-cover rounded-xl border border-slate-100" alt="Cover preview">
+        </div>
+        <p class="text-xs text-slate-400 mt-1.5">Paste an Unsplash or any image URL for a beautiful cover photo.</p>
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button type="submit" class="btn-premium flex-1 justify-center">
+          {{ 'Save Changes' if trip else 'Create Trip & Build Itinerary →' }}
+        </button>
+        <a href="{{ url_for('trips.my_trips') }}"
+           class="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold transition">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const urlInput = document.getElementById('cover_url');
+  const preview = document.getElementById('cover_preview');
+  const img = document.getElementById('cover_img');
+  urlInput.addEventListener('input', () => {
+    const val = urlInput.value.trim();
+    if (val) { img.src = val; preview.classList.remove('hidden'); }
+    else { preview.classList.add('hidden'); }
+  });
+  if (urlInput.value.trim()) { img.src = urlInput.value.trim(); preview.classList.remove('hidden'); }
+</script>
+{% endblock %}

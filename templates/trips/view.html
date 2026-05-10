@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+{% block title %}{{ trip.name }} — Traveloop{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-sm text-slate-400 mb-6">
+    <a href="{{ url_for('trips.my_trips') }}" class="hover:text-sky-500 transition font-medium">My Trips</a>
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <span class="text-slate-600 font-medium">{{ trip.name }}</span>
+  </div>
+
+  <!-- Trip Hero -->
+  {% if trip.cover_photo %}
+  <div class="h-64 rounded-2xl overflow-hidden mb-6 relative shadow-xl">
+    <img src="{{ trip.cover_photo }}" class="w-full h-full object-cover" alt="{{ trip.name }}">
+    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent flex items-end p-6">
+      <div>
+        <h1 class="text-3xl font-extrabold text-white">{{ trip.name }}</h1>
+        {% if trip.description %}
+        <p class="text-white/70 text-sm mt-1">{{ trip.description }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="hero-gradient rounded-2xl p-8 mb-6 shadow-lg">
+    <h1 class="text-3xl font-extrabold text-white mb-1">{{ trip.name }}</h1>
+    {% if trip.description %}<p class="text-slate-300">{{ trip.description }}</p>{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Meta Info Row -->
+  <div class="flex flex-wrap gap-3 items-center mb-6">
+    {% if trip.start_date %}
+    <div class="flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-3.5 py-2 text-sm shadow-sm">
+      <svg class="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span class="text-slate-600">{{ trip.start_date.strftime('%b %d') }} – {{ trip.end_date.strftime('%b %d, %Y') if trip.end_date else '?' }}</span>
+      <span class="text-slate-300">·</span>
+      <span class="font-bold text-slate-700">{{ trip.total_days }} days</span>
+    </div>
+    {% endif %}
+    <div class="flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-3.5 py-2 text-sm shadow-sm">
+      <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+      <span class="font-bold text-slate-700">{{ trip.stops|length }}</span>
+      <span class="text-slate-500">stop{{ 's' if trip.stops|length != 1 }}</span>
+    </div>
+    {% if trip.total_budget > 0 %}
+    <div class="flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-3.5 py-2 text-sm shadow-sm">
+      <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="text-slate-500">Est.</span>
+      <span class="font-bold text-slate-700">${{ "%.0f"|format(trip.total_budget) }}</span>
+    </div>
+    {% endif %}
+    {% if trip.is_public %}
+    <span class="badge bg-emerald-100 text-emerald-600">🌍 Public</span>
+    {% endif %}
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="flex flex-wrap gap-2 mb-8" x-data="{ emailOpen: false }">
+    <a href="{{ url_for('trips.builder', trip_id=trip.id) }}"
+       class="btn-premium text-sm py-2.5 px-4">
+      <span>✏️</span> Edit Itinerary
+    </a>
+    <a href="{{ url_for('budget.budget', trip_id=trip.id) }}"
+       class="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-4 py-2.5 rounded-xl text-sm font-semibold transition">
+      💰 Budget
+    </a>
+    <a href="{{ url_for('trips.checklist', trip_id=trip.id) }}"
+       class="flex items-center gap-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 px-4 py-2.5 rounded-xl text-sm font-semibold transition">
+      ✅ Packing List
+    </a>
+    <a href="{{ url_for('trips.notes', trip_id=trip.id) }}"
+       class="flex items-center gap-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 px-4 py-2.5 rounded-xl text-sm font-semibold transition">
+      📝 Notes
+    </a>
+
+    <!-- Email button -->
+    <button @click="emailOpen = !emailOpen"
+            class="flex items-center gap-1.5 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 px-4 py-2.5 rounded-xl text-sm font-semibold transition">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      Email Itinerary
+    </button>
+
+    <form method="POST" action="{{ url_for('share.toggle_public', trip_id=trip.id) }}" class="inline">
+      <button class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-semibold transition">
+        {% if trip.is_public %}🔒 Make Private{% else %}🌍 Make Public{% endif %}
+      </button>
+    </form>
+
+    <!-- Email modal -->
+    <div x-show="emailOpen" x-cloak @click.away="emailOpen = false"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         class="fixed inset-0 z-50 flex items-center justify-center px-4"
+         style="background:rgba(15,23,42,0.5)">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+              <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            </div>
+            <div>
+              <h3 class="font-extrabold text-slate-800">Email Itinerary</h3>
+              <p class="text-xs text-slate-400">Send a full summary to your inbox</p>
+            </div>
+          </div>
+          <button @click="emailOpen = false" class="text-slate-400 hover:text-slate-600 transition">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <form method="POST" action="{{ url_for('trips.email_itinerary', trip_id=trip.id) }}" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Send to email</label>
+            <input type="email" name="email"
+                   value="{{ current_user.email }}"
+                   class="input-premium"
+                   placeholder="you@example.com">
+            <p class="text-xs text-slate-400 mt-1.5">Defaults to your account email. Change to send to a travel companion.</p>
+          </div>
+          <div class="bg-sky-50 border border-sky-200 rounded-xl p-3 text-xs text-sky-700">
+            The email will include your full itinerary: all stops, activities, dates, and estimated budget.
+          </div>
+          <div class="flex gap-3 pt-1">
+            <button type="submit" class="btn-premium flex-1 justify-center text-sm">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+              Send Itinerary
+            </button>
+            <button type="button" @click="emailOpen = false"
+                    class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold text-sm transition">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share URL -->
+  {% if trip.is_public %}
+  <div class="premium-card p-4 mb-8 border-sky-200" style="background:linear-gradient(to right,#f0f9ff,#eef2ff)">
+    <p class="text-sm font-bold text-sky-700 mb-2.5 flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+      Public Share Link
+    </p>
+    <div class="flex gap-2">
+      <input type="text" readonly
+             value="{{ request.url_root.rstrip('/') }}{{ url_for('share.public_view', token=trip.share_token) }}"
+             class="flex-1 bg-white border border-sky-200 rounded-xl px-3 py-2 text-sm text-slate-700"
+             id="share-url">
+      <button onclick="copyShareUrl()"
+              class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-xl text-sm font-bold transition">
+        Copy
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if trip.stops %}
+
+  <!-- View Toggle -->
+  <div class="flex items-center justify-between mb-6" x-data="{ view: 'timeline' }" id="view-toggle-root">
+    <h2 class="text-lg font-extrabold text-slate-800">Itinerary</h2>
+    <div class="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+      <button @click="view = 'timeline'"
+              :class="view === 'timeline' ? 'bg-white shadow text-sky-600 font-bold' : 'text-slate-500 hover:text-slate-700'"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+        Timeline
+      </button>
+      <button @click="view = 'calendar'"
+              :class="view === 'calendar' ? 'bg-white shadow text-sky-600 font-bold' : 'text-slate-500 hover:text-slate-700'"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Calendar
+      </button>
+    </div>
+
+  <!-- ── Timeline View ── -->
+  <div x-show="view === 'timeline'" class="space-y-6 stagger mt-6">
+    {% for stop in trip.stops %}
+    <div class="relative">
+      {% if not loop.last %}
+      <div class="absolute left-5 top-14 bottom-0 w-0.5 bg-gradient-to-b from-sky-300 to-slate-200 -mb-6"></div>
+      {% endif %}
+      <div class="flex gap-4">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-md">
+          {{ loop.index }}
+        </div>
+        <div class="flex-1 premium-card overflow-hidden mb-2">
+          <div class="p-4 bg-gradient-to-r from-sky-50 to-indigo-50 border-b border-slate-100">
+            <h2 class="text-lg font-extrabold text-slate-800">{{ stop.city.name }}, {{ stop.city.country }}</h2>
+            {% if stop.arrival_date %}
+            <p class="text-sm text-slate-500 mt-0.5">
+              {{ stop.arrival_date.strftime('%B %d') }} – {{ stop.departure_date.strftime('%B %d, %Y') if stop.departure_date else '?' }}
+              · <span class="font-semibold">{{ stop.days }} day{{ 's' if stop.days != 1 }}</span>
+            </p>
+            {% endif %}
+            {% if stop.activity_cost > 0 %}
+            <span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full mt-2">
+              💰 Est. ${{ "%.0f"|format(stop.activity_cost) }}
+            </span>
+            {% endif %}
+          </div>
+          {% if stop.stop_activities %}
+          <div class="p-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {% for sa in stop.stop_activities %}
+              <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl hover:bg-sky-50 transition">
+                <span class="text-xl shrink-0">
+                  {% if sa.activity.category == 'sightseeing' %}📸
+                  {% elif sa.activity.category == 'food' %}🍜
+                  {% elif sa.activity.category == 'adventure' %}🏔️
+                  {% elif sa.activity.category == 'culture' %}🏛️
+                  {% else %}⭐{% endif %}
+                </span>
+                <div>
+                  <p class="font-bold text-sm text-slate-800">{{ sa.activity.name }}</p>
+                  <p class="text-xs text-slate-500 mt-0.5">
+                    <span class="font-semibold text-slate-700">${{ "%.0f"|format(sa.custom_cost if sa.custom_cost is not none else sa.activity.estimated_cost) }}</span>
+                    · {{ sa.activity.duration_hours }}h · <span class="capitalize">{{ sa.activity.category }}</span>
+                  </p>
+                  {% if sa.activity.description %}
+                  <p class="text-xs text-slate-400 mt-1 line-clamp-2">{{ sa.activity.description }}</p>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <p class="text-sm text-slate-400 italic p-4">No activities planned for this stop.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── Calendar View ── -->
+  <div x-show="view === 'calendar'" class="mt-6">
+    {% if calendar_days %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for day in calendar_days %}
+      <div class="premium-card overflow-hidden">
+        <!-- Day header -->
+        <div class="px-4 py-3 flex items-center justify-between
+          {% if day.stop %}bg-gradient-to-r from-sky-50 to-indigo-50{% else %}bg-slate-50{% endif %}
+          border-b border-slate-100">
+          <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+              {{ day.date.strftime('%a') }}
+            </p>
+            <p class="text-lg font-extrabold text-slate-800 leading-tight">
+              {{ day.date.strftime('%b %d') }}
+            </p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-bold text-white px-2.5 py-1 rounded-full"
+                  style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+              Day {{ day.day_num }}
+            </span>
+          </div>
+        </div>
+
+        <!-- City & activities -->
+        <div class="p-3">
+          {% if day.stop %}
+          <div class="flex items-center gap-1.5 mb-2.5">
+            <svg class="w-3.5 h-3.5 text-sky-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+            <span class="text-sm font-bold text-slate-700">{{ day.stop.city.name }}</span>
+            <span class="text-xs text-slate-400">{{ day.stop.city.country }}</span>
+          </div>
+          {% if day.stop.stop_activities %}
+          <div class="space-y-1.5">
+            {% for sa in day.stop.stop_activities %}
+            <div class="flex items-center gap-2 text-xs bg-slate-50 rounded-lg px-2.5 py-1.5">
+              <span>
+                {% if sa.activity.category == 'sightseeing' %}📸
+                {% elif sa.activity.category == 'food' %}🍜
+                {% elif sa.activity.category == 'adventure' %}🏔️
+                {% elif sa.activity.category == 'culture' %}🏛️
+                {% else %}⭐{% endif %}
+              </span>
+              <span class="font-medium text-slate-700 truncate flex-1">{{ sa.activity.name }}</span>
+              <span class="text-slate-400 shrink-0">${{ "%.0f"|format(sa.custom_cost if sa.custom_cost is not none else sa.activity.estimated_cost) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-xs text-slate-400 italic">No activities</p>
+          {% endif %}
+          {% else %}
+          <p class="text-xs text-slate-400 italic flex items-center gap-1.5">
+            <span>🚌</span> Travel / transit day
+          </p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="premium-card p-8 text-center text-slate-400">
+      <p class="text-sm">Add trip dates to see the calendar view.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  </div><!-- end x-data -->
+
+  {% else %}
+  <div class="premium-card border-2 border-dashed border-slate-200 text-center py-16">
+    <div class="text-5xl mb-4">🗺️</div>
+    <p class="text-slate-500 mb-5 font-medium">No stops planned yet.</p>
+    <a href="{{ url_for('trips.builder', trip_id=trip.id) }}"
+       class="btn-premium inline-flex">
+      Build Itinerary
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function copyShareUrl() {
+    const input = document.getElementById('share-url');
+    navigator.clipboard.writeText(input.value).then(() => {
+      const btn = event.target;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+  }
+</script>
+{% endblock %}

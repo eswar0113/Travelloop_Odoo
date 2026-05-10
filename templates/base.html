@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Traveloop{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Navbar ───────────────────────────────── -->
+<nav class="navbar" x-data="{ mobileOpen: false }">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-15" style="height:60px">
+
+    <!-- Logo -->
+    <a href="{{ url_for('trips.dashboard') if current_user.is_authenticated else url_for('auth.login') }}"
+       class="flex items-center gap-2.5 shrink-0">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#141413">
+        <svg style="width:16px;height:16px;color:#fff" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+        </svg>
+      </div>
+      <span style="font-weight:800;font-size:1.0625rem;color:#141413;letter-spacing:-.02em">
+        Traveloop
+      </span>
+    </a>
+
+    {% if current_user.is_authenticated %}
+    <!-- Nav links -->
+    <div class="hidden md:flex items-center gap-0.5">
+      {% for ep, label in [
+        ('trips.dashboard','Dashboard'),
+        ('trips.my_trips','My Trips'),
+        ('cities.search_page','Explore'),
+        ('community.feed','Community'),
+      ] %}
+      <a href="{{ url_for(ep) }}"
+         class="nav-link {% if request.endpoint == ep %}active{% endif %}">
+        {{ label }}
+      </a>
+      {% endfor %}
+    </div>
+
+    <!-- Right -->
+    <div class="flex items-center gap-2" x-data="{ open: false }">
+
+      <a href="{{ url_for('trips.create_trip') }}"
+         class="hidden sm:inline-flex btn-premium btn-accent text-sm py-2 px-4">
+        <svg style="width:13px;height:13px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        New Trip
+      </a>
+
+      <!-- Avatar -->
+      <div class="relative">
+        <button @click="open = !open"
+                class="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-black hover:bg-opacity-5">
+          <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0"
+               style="background:#141413">
+            {% if current_user.photo_url %}
+            <img src="{{ current_user.photo_url }}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+            {% endif %}
+            {{ current_user.name[0].upper() }}
+          </div>
+          <span class="hidden sm:block text-sm font-semibold" style="color:#141413">
+            {{ current_user.name.split()[0] }}
+          </span>
+          <svg style="width:12px;height:12px;color:#8a8680;transition:transform .2s" :class="open?'rotate-180':''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+
+        <!-- Dropdown -->
+        <div x-show="open" x-cloak @click.away="open = false"
+             x-transition:enter="transition ease-out duration-100"
+             x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+             class="absolute right-0 mt-1.5 w-52 rounded-xl border py-1.5 z-50"
+             style="background:#fff;border-color:#e8e5df;box-shadow:0 8px 32px rgba(0,0,0,0.1),0 1px 4px rgba(0,0,0,0.06)">
+
+          <div class="px-4 py-2.5 border-b" style="border-color:#f0ede8">
+            <p class="text-sm font-bold truncate" style="color:#141413">{{ current_user.name }}</p>
+            <p class="text-xs truncate mt-0.5" style="color:#8a8680">{{ current_user.email }}</p>
+          </div>
+
+          <div class="py-1 px-1.5">
+            {% for ep, label in [
+              ('profile.profile','Profile & Settings'),
+              ('trips.my_trips','My Trips'),
+              ('community.feed','Community'),
+            ] %}
+            <a href="{{ url_for(ep) }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition"
+               style="color:#4b4945"
+               onmouseover="this.style.background='#f5f4f0'"
+               onmouseout="this.style.background='transparent'">
+              {{ label }}
+            </a>
+            {% endfor %}
+            {% if current_user.email == 'admin@traveloop.com' %}
+            <a href="{{ url_for('admin.dashboard') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition"
+               style="color:#4b4945"
+               onmouseover="this.style.background='#f5f4f0'"
+               onmouseout="this.style.background='transparent'">
+              Admin Dashboard
+            </a>
+            {% endif %}
+          </div>
+
+          <div class="border-t pt-1 px-1.5" style="border-color:#f0ede8">
+            <a href="{{ url_for('auth.logout') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition"
+               style="color:#b91c1c"
+               onmouseover="this.style.background='#fef2f2'"
+               onmouseout="this.style.background='transparent'">
+              Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile menu -->
+      <button @click="mobileOpen = !mobileOpen"
+              class="md:hidden p-2 rounded-lg transition hover:bg-black hover:bg-opacity-5">
+        <svg style="width:18px;height:18px;color:#4b4945" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            x-show="!mobileOpen" d="M4 6h16M4 12h16M4 18h16"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            x-show="mobileOpen" x-cloak d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    {% else %}
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('auth.login') }}" class="text-sm font-semibold" style="color:#4b4945">Sign In</a>
+      <a href="{{ url_for('auth.signup') }}" class="btn-premium text-sm py-2 px-4">Get Started</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Mobile drawer -->
+  {% if current_user.is_authenticated %}
+  <div x-show="mobileOpen" x-cloak class="md:hidden px-4 pb-3 border-t" style="border-color:#e8e5df">
+    {% for ep, label in [
+      ('trips.dashboard','Dashboard'),
+      ('trips.my_trips','My Trips'),
+      ('cities.search_page','Explore'),
+      ('community.feed','Community'),
+      ('trips.create_trip','+ New Trip'),
+    ] %}
+    <a href="{{ url_for(ep) }}" @click="mobileOpen=false"
+       class="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium mt-1"
+       style="color:#4b4945">{{ label }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</nav>
+
+<!-- ── Flash messages ────────────────────────── -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="max-w-7xl mx-auto px-5 sm:px-8 pt-4 space-y-2">
+  {% for category, message in messages %}
+  <div x-data="{ show: true }" x-show="show"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-semibold"
+       style="
+         {% if category == 'success' %}background:#f0fdf4;color:#15803d;border-color:#bbf7d0
+         {% elif category == 'error' %}background:#fef2f2;color:#b91c1c;border-color:#fecaca
+         {% else %}background:#fff7ed;color:#c2410c;border-color:#fed7aa{% endif %}">
+    <span>{{ message }}</span>
+    <button @click="show = false" style="opacity:.5;margin-left:1rem">
+      <svg style="width:14px;height:14px" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+{% block scripts %}{% endblock %}
+
+{% if current_user.is_authenticated %}
+<!-- ── Gemini AI Chat Widget ──────────────────────── -->
+<style>
+  .chat-dot {
+    width:7px;height:7px;border-radius:50%;background:#c4c1bb;
+    animation:chat-bounce .9s ease-in-out infinite;
+  }
+  @keyframes chat-bounce {
+    0%,80%,100%{transform:translateY(0);opacity:.5}
+    40%{transform:translateY(-6px);opacity:1}
+  }
+</style>
+
+<div x-data="chatWidget()"
+     style="position:fixed;bottom:24px;right:24px;z-index:9999;
+            font-family:'Plus Jakarta Sans',system-ui,sans-serif">
+
+  <!-- Chat window -->
+  <div x-show="open" x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 translate-y-3"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100 translate-y-0"
+       x-transition:leave-end="opacity-0 translate-y-3"
+       style="position:absolute;bottom:66px;right:0;width:350px;
+              background:#fff;border-radius:20px;
+              border:1px solid #e8e5df;
+              box-shadow:0 20px 60px rgba(0,0,0,.14),0 2px 10px rgba(0,0,0,.06);
+              overflow:hidden;display:flex;flex-direction:column">
+
+    <!-- Header -->
+    <div style="background:#141413;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <div style="width:34px;height:34px;border-radius:50%;background:#c2410c;
+                  display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg style="width:17px;height:17px;color:#fff" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+        </svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <p style="color:#fff;font-weight:700;font-size:.875rem;line-height:1.2">Traveloop AI</p>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block"></span>
+          <p style="color:rgba(255,255,255,.45);font-size:.7rem">Powered by Gemini</p>
+        </div>
+      </div>
+      <button @click="open=false"
+              style="color:rgba(255,255,255,.4);background:none;border:none;cursor:pointer;padding:4px;
+                     border-radius:6px;transition:.15s;line-height:0"
+              onmouseover="this.style.color='rgba(255,255,255,.8)'"
+              onmouseout="this.style.color='rgba(255,255,255,.4)'">
+        <svg style="width:15px;height:15px" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Messages -->
+    <div id="chat-msgs"
+         style="height:330px;overflow-y:auto;padding:14px 14px 8px;
+                display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth">
+
+      <!-- Welcome bubble -->
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div style="width:26px;height:26px;border-radius:50%;background:#c2410c;flex-shrink:0;
+                    display:flex;align-items:center;justify-content:center;font-size:.7rem">✈️</div>
+        <div style="background:#f5f4f0;border-radius:4px 14px 14px 14px;padding:10px 12px;
+                    max-width:260px;font-size:.8125rem;color:#141413;line-height:1.55">
+          Hey <strong>{{ current_user.name.split()[0] }}</strong>! 👋 I'm your AI travel assistant. Ask me about destinations, itineraries, budgets, visa rules, or packing tips!
+        </div>
+      </div>
+
+      <!-- Dynamic messages -->
+      <template x-for="m in messages" :key="m.id">
+        <div :style="m.role==='user'
+             ? 'display:flex;justify-content:flex-end'
+             : 'display:flex;gap:8px;align-items:flex-end'">
+          <!-- Bot avatar -->
+          <div x-show="m.role==='bot'"
+               style="width:26px;height:26px;border-radius:50%;background:#c2410c;flex-shrink:0;
+                      display:flex;align-items:center;justify-content:center;font-size:.7rem">✈️</div>
+          <div :style="m.role==='user'
+               ? 'background:#141413;color:#fff;border-radius:14px 4px 14px 14px;padding:10px 12px;max-width:230px;font-size:.8125rem;line-height:1.5;word-break:break-word'
+               : 'background:#f5f4f0;color:#141413;border-radius:4px 14px 14px 14px;padding:10px 12px;max-width:260px;font-size:.8125rem;line-height:1.55;white-space:pre-wrap;word-break:break-word'">
+            <span x-text="m.text"></span>
+          </div>
+        </div>
+      </template>
+
+      <!-- Typing indicator -->
+      <div x-show="typing" style="display:flex;gap:8px;align-items:flex-end">
+        <div style="width:26px;height:26px;border-radius:50%;background:#c2410c;flex-shrink:0;
+                    display:flex;align-items:center;justify-content:center;font-size:.7rem">✈️</div>
+        <div style="background:#f5f4f0;border-radius:4px 14px 14px 14px;padding:12px 14px">
+          <div style="display:flex;gap:4px;align-items:center">
+            <span class="chat-dot"></span>
+            <span class="chat-dot" style="animation-delay:.18s"></span>
+            <span class="chat-dot" style="animation-delay:.36s"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick prompts (only before first message) -->
+    <div x-show="messages.length===0"
+         style="padding:0 12px 10px;display:flex;flex-wrap:wrap;gap:5px">
+      <template x-for="p in prompts" :key="p">
+        <button @click="send(p)"
+                style="font-size:.7rem;font-weight:600;padding:4px 10px;border-radius:99px;
+                       border:1px solid #e8e5df;background:#fff;color:#4b4945;cursor:pointer;transition:.15s"
+                onmouseover="this.style.background='#f5f4f0';this.style.borderColor='#c4c1bb'"
+                onmouseout="this.style.background='#fff';this.style.borderColor='#e8e5df'">
+          <span x-text="p"></span>
+        </button>
+      </template>
+    </div>
+
+    <!-- Input bar -->
+    <div style="padding:10px 12px;border-top:1px solid #f0ede8;display:flex;gap:8px;flex-shrink:0">
+      <input x-model="input" @keydown.enter.prevent="send()"
+             type="text" placeholder="Ask anything about travel…"
+             :disabled="typing"
+             style="flex:1;border:1.5px solid #e8e5df;border-radius:10px;padding:.5rem .75rem;
+                    font-size:.8125rem;font-family:inherit;color:#141413;background:#fff;outline:none;
+                    transition:border-color .15s"
+             onfocus="this.style.borderColor='#141413'"
+             onblur="this.style.borderColor='#e8e5df'">
+      <button @click="send()" :disabled="typing||!input.trim()"
+              style="width:36px;height:36px;border-radius:9px;background:#c2410c;border:none;
+                     cursor:pointer;display:flex;align-items:center;justify-content:center;
+                     flex-shrink:0;transition:.15s"
+              :style="(typing||!input.trim())?'opacity:.35;cursor:not-allowed':'opacity:1'"
+              onmouseover="if(!this.disabled)this.style.background='#9a3412'"
+              onmouseout="this.style.background='#c2410c'">
+        <svg style="width:15px;height:15px;color:#fff" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- FAB button -->
+  <button @click="open=!open"
+          style="width:54px;height:54px;border-radius:50%;background:#c2410c;border:none;
+                 cursor:pointer;display:flex;align-items:center;justify-content:center;
+                 box-shadow:0 4px 18px rgba(194,65,12,.45);transition:transform .2s,box-shadow .2s"
+          onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 8px 28px rgba(194,65,12,.55)'"
+          onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 18px rgba(194,65,12,.45)'">
+    <!-- Chat icon -->
+    <svg x-show="!open" style="width:24px;height:24px;color:#fff" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+    </svg>
+    <!-- Close icon -->
+    <svg x-show="open" x-cloak style="width:20px;height:20px;color:#fff" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  </button>
+</div>
+
+<script>
+function chatWidget() {
+  return {
+    open: false,
+    input: '',
+    typing: false,
+    messages: [],
+    _id: 0,
+    history: [],
+    prompts: [
+      'Best budget destinations 2025?',
+      'Pack for 2 weeks in Europe',
+      'Visa-free countries for India',
+      'Cheap flights tips ✈️',
+    ],
+    init() {
+      this.$watch('open', v => {
+        if (v) this.$nextTick(() => this.scrollBottom());
+      });
+    },
+    scrollBottom() {
+      const el = document.getElementById('chat-msgs');
+      if (el) el.scrollTop = el.scrollHeight;
+    },
+    async send(text) {
+      const msg = (text || this.input).trim();
+      if (!msg || this.typing) return;
+      this.input = '';
+      this.messages.push({ id: ++this._id, role: 'user', text: msg });
+      this.history.push({ role: 'user', text: msg });
+      this.typing = true;
+      this.$nextTick(() => this.scrollBottom());
+      try {
+        const r = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg, history: this.history.slice(-12) }),
+        });
+        const d = await r.json();
+        const reply = d.reply || 'Sorry, I could not respond right now.';
+        this.messages.push({ id: ++this._id, role: 'bot', text: reply });
+        this.history.push({ role: 'model', text: reply });
+      } catch {
+        this.messages.push({ id: ++this._id, role: 'bot', text: 'Connection error. Please try again!' });
+      }
+      this.typing = false;
+      this.$nextTick(() => this.scrollBottom());
+    }
+  };
+}
+</script>
+{% endif %}
+
+</body>
+</html>

@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% block title %}Community — Traveloop{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-3xl font-extrabold" style="color:#141413">Community</h1>
+      <p class="mt-1 text-sm" style="color:#8a8680">Travel stories, tips, and experiences from fellow explorers.</p>
+    </div>
+    <button onclick="document.getElementById('new-post-panel').classList.toggle('hidden')"
+            class="btn-premium text-sm">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      Share a Post
+    </button>
+  </div>
+
+  <!-- New Post Panel -->
+  <div id="new-post-panel" class="hidden premium-card p-6 mb-6 fade-up">
+    <h2 class="text-base font-extrabold mb-4 flex items-center gap-2" style="color:#141413">
+      <span>✍️</span> Share your experience
+    </h2>
+    <form method="POST" action="{{ url_for('community.create_post') }}"
+          enctype="multipart/form-data" class="space-y-3"
+          x-data="{ preview: null }"
+          @submit="preview = null">
+      <input type="text" name="title" required
+             placeholder="Give your post a title…"
+             class="input-premium">
+      <textarea name="content" required rows="4"
+                placeholder="Share your travel story, tip, or recommendation…"
+                class="input-premium resize-none leading-relaxed"></textarea>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <select name="city_id" class="input-premium">
+          <option value="">📍 Any city</option>
+          {% for city in cities %}
+          <option value="{{ city.id }}">{{ city.name }}, {{ city.country }}</option>
+          {% endfor %}
+        </select>
+        <select name="trip_id" class="input-premium">
+          <option value="">🗺️ No trip linked</option>
+          {% for trip in user_trips %}
+          <option value="{{ trip.id }}">{{ trip.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Image upload -->
+      <div>
+        <label style="font-size:.8125rem;font-weight:600;color:#4b4945;display:block;margin-bottom:6px">
+          Photo <span style="font-weight:400;color:#8a8680">(optional · JPG, PNG, GIF, WebP · max 16 MB)</span>
+        </label>
+        <!-- Drop zone -->
+        <label for="post-image"
+               style="display:block;border:1.5px dashed #e8e5df;border-radius:10px;padding:1.25rem;text-align:center;cursor:pointer;transition:border-color .15s,background .15s"
+               onmouseover="this.style.borderColor='#c2410c';this.style.background='#fff7ed'"
+               onmouseout="this.style.borderColor='#e8e5df';this.style.background='transparent'">
+          <!-- Preview -->
+          <template x-if="preview">
+            <div style="margin-bottom:.75rem">
+              <img :src="preview" style="max-height:180px;max-width:100%;border-radius:8px;margin:0 auto;object-fit:cover">
+            </div>
+          </template>
+          <template x-if="!preview">
+            <div style="pointer-events:none">
+              <svg style="width:28px;height:28px;color:#c4c1bb;margin:0 auto .5rem" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+              <p style="font-size:.875rem;font-weight:600;color:#8a8680">Click to upload or drag &amp; drop</p>
+              <p style="font-size:.75rem;color:#c4c1bb;margin-top:.2rem">JPG, PNG, GIF, WebP</p>
+            </div>
+          </template>
+          <input id="post-image" type="file" name="image" accept="image/*"
+                 style="display:none"
+                 @change="preview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null">
+        </label>
+        <!-- Clear button -->
+        <template x-if="preview">
+          <button type="button" @click="preview = null; $el.previousElementSibling.querySelector('input').value = ''"
+                  style="margin-top:.4rem;font-size:.8125rem;font-weight:600;color:#b91c1c;background:none;border:none;cursor:pointer;padding:0">
+            ✕ Remove photo
+          </button>
+        </template>
+      </div>
+
+      <div class="flex gap-2">
+        <button type="submit" class="btn-premium btn-accent">
+          <svg style="width:14px;height:14px" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          Publish
+        </button>
+        <button type="button" onclick="document.getElementById('new-post-panel').classList.add('hidden')"
+                class="btn-ghost text-sm">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Search + Filter -->
+  <form method="GET" action="{{ url_for('community.feed') }}"
+        class="flex flex-wrap gap-3 mb-6">
+    <div class="flex-1 min-w-48 relative">
+      <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input type="text" name="q" value="{{ q }}"
+             placeholder="Search posts…"
+             class="input-premium pl-9">
+    </div>
+    <select name="city_id" class="input-premium" style="width:auto;min-width:160px">
+      <option value="">All cities</option>
+      {% for city in cities %}
+      <option value="{{ city.id }}" {{ 'selected' if city_filter == city.id }}>{{ city.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn-premium text-sm">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      Search
+    </button>
+    {% if q or city_filter %}
+    <a href="{{ url_for('community.feed') }}"
+       class="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 font-semibold text-sm transition flex items-center">
+      Clear
+    </a>
+    {% endif %}
+  </form>
+
+  <!-- Posts count -->
+  <p class="text-sm mb-4 font-medium" style="color:#8a8680">
+    <span class="font-extrabold" style="color:#141413">{{ posts|length }}</span>
+    post{{ 's' if posts|length != 1 }}
+    {% if q %} matching "<strong style="color:#4b4945">{{ q }}</strong>"{% endif %}
+  </p>
+
+  <!-- Feed -->
+  {% if posts %}
+  <div class="space-y-5 stagger">
+    {% for post in posts %}
+    <div class="premium-card overflow-hidden fade-up">
+
+      {% if post.image_url %}
+      <div class="h-48 overflow-hidden">
+        <img src="{{ post.image_url }}" alt="{{ post.title }}"
+             class="w-full h-full object-cover"
+             onerror="this.parentElement.style.display='none'">
+      </div>
+      {% endif %}
+
+      <div class="p-5">
+        <!-- Author row -->
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
+               style="background:#141413">
+            {% if post.author.photo_url %}
+            <img src="{{ post.author.photo_url }}" class="w-full h-full object-cover rounded-full" onerror="this.style.display='none'">
+            {% endif %}
+            {{ (post.author.name or '?')[0].upper() }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold" style="color:#141413">{{ post.author.name }}</p>
+            <p class="text-xs" style="color:#8a8680">{{ post.created_at.strftime('%b %d, %Y') }}</p>
+          </div>
+          <!-- Tags -->
+          <div class="flex items-center gap-2 flex-wrap justify-end">
+            {% if post.city %}
+            <span class="badge flex items-center gap-1" style="background:#fff7ed;color:#c2410c;font-size:.65rem">
+              <svg style="width:10px;height:10px" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+              {{ post.city.name }}
+            </span>
+            {% endif %}
+            {% if post.trip %}
+            <span class="badge flex items-center gap-1" style="background:#f5f4f0;color:#4b4945;font-size:.65rem">
+              <svg style="width:10px;height:10px" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+              {{ post.trip.name }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Content -->
+        <h3 class="font-extrabold text-base mb-2 leading-snug" style="color:#141413">{{ post.title }}</h3>
+        <p class="text-sm leading-relaxed whitespace-pre-wrap line-clamp-4" style="color:#4b4945">{{ post.content }}</p>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-3 mt-4 pt-4 border-t" style="border-color:#f0ede8">
+          <form method="POST" action="{{ url_for('community.like_post', post_id=post.id) }}">
+            <button type="submit"
+                    class="flex items-center gap-1.5 text-sm font-semibold transition group"
+                    style="color:#8a8680"
+                    onmouseover="this.style.color='#b91c1c'" onmouseout="this.style.color='#8a8680'">
+              <svg class="w-4 h-4 group-hover:scale-110 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+              {{ post.likes or 0 }}
+            </button>
+          </form>
+          <span class="flex-1"></span>
+          {% if post.user_id == current_user.id %}
+          <form method="POST" action="{{ url_for('community.delete_post', post_id=post.id) }}"
+                onsubmit="return confirm('Delete this post?')">
+            <button type="submit"
+                    class="text-xs font-semibold transition"
+                    style="color:#c4c1bb"
+                    onmouseover="this.style.color='#b91c1c'" onmouseout="this.style.color='#c4c1bb'">
+              Delete
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="rounded-2xl text-center py-20 fade-up" style="border:2px dashed #e8e5df;background:#fff">
+    <div class="text-5xl mb-4">🌍</div>
+    <p class="font-semibold mb-1" style="color:#141413">No posts yet</p>
+    <p class="text-sm mb-5" style="color:#8a8680">Be the first to share a travel story with the community.</p>
+    <button onclick="document.getElementById('new-post-panel').classList.remove('hidden');document.getElementById('new-post-panel').scrollIntoView({behavior:'smooth'})"
+            class="btn-premium inline-flex text-sm">
+      Share a Post
+    </button>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

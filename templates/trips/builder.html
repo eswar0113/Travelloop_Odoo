@@ -1,0 +1,505 @@
+{% extends 'base.html' %}
+{% block title %}Build Itinerary — {{ trip.name }}{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="builderApp()">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+      <a href="{{ url_for('trips.my_trips') }}" class="text-sm text-slate-400 hover:text-sky-500 transition">My Trips</a>
+      <span class="text-slate-300 mx-2">/</span>
+      <span class="text-sm text-slate-600 font-medium">{{ trip.name }}</span>
+    </div>
+    <div class="flex gap-2">
+      <form method="POST" action="{{ url_for('trips.finish_trip', trip_id=trip.id) }}">
+        <button type="submit"
+                class="flex items-center gap-1.5 text-sm font-bold text-white px-4 py-2 rounded-xl transition shadow-md"
+                style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Done — View Trip
+        </button>
+      </form>
+      <a href="{{ url_for('budget.budget', trip_id=trip.id) }}"
+         class="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Budget
+      </a>
+    </div>
+  </div>
+
+  <div class="mb-6">
+    <h1 class="text-2xl font-extrabold text-slate-800">{{ trip.name }}</h1>
+    {% if trip.start_date %}
+    <p class="text-slate-500 text-sm mt-1">
+      {{ trip.start_date.strftime('%b %d, %Y') }} → {{ trip.end_date.strftime('%b %d, %Y') if trip.end_date else 'Open-ended' }}
+      · {{ trip.total_days }} day{{ 's' if trip.total_days != 1 }}
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+    <!-- ── Stops List ── -->
+    <div class="lg:col-span-3 space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-700">Your Stops ({{ trip.stops|length }})</h2>
+        <button @click="showAddStop = true"
+                class="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition shadow-sm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          Add Stop
+        </button>
+      </div>
+
+      {% if trip.stops %}
+      <div id="stops-list" class="space-y-4">
+        {% for stop in trip.stops %}
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden" data-id="{{ stop.id }}">
+
+          <!-- Stop Header -->
+          <div class="flex items-center gap-3 p-4 bg-gradient-to-r from-sky-50 to-indigo-50 border-b border-slate-100">
+            <div class="cursor-grab text-slate-300 hover:text-slate-500 transition drag-handle">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </div>
+            <div class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0">
+              {{ loop.index }}
+            </div>
+            <div class="flex-1">
+              <p class="font-bold text-slate-800">{{ stop.city.name }}, {{ stop.city.country }}</p>
+              <p class="text-xs text-slate-500">
+                {% if stop.arrival_date %}
+                  {{ stop.arrival_date.strftime('%b %d') }} → {{ stop.departure_date.strftime('%b %d') if stop.departure_date else '?' }}
+                  · {{ stop.days }} day{{ 's' if stop.days != 1 }}
+                {% else %}Dates not set{% endif %}
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button @click="openActivities({{ stop.id }}, {{ stop.city.id }}, '{{ stop.city.name }}')"
+                      class="text-xs font-semibold text-sky-600 bg-sky-100 hover:bg-sky-200 px-3 py-1.5 rounded-lg transition">
+                + Activity
+              </button>
+              <form method="POST" action="{{ url_for('trips.delete_stop', stop_id=stop.id) }}"
+                    onsubmit="return confirm('Remove {{ stop.city.name }} from this trip?')">
+                <button class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Activities -->
+          <div class="p-4">
+            {% if stop.stop_activities %}
+            <div class="space-y-2" id="activities-{{ stop.id }}">
+              {% for sa in stop.stop_activities %}
+              <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl" id="sa-{{ sa.id }}">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0
+                            {% if sa.activity.category == 'sightseeing' %}bg-sky-100 text-sky-600
+                            {% elif sa.activity.category == 'food' %}bg-amber-100 text-amber-600
+                            {% elif sa.activity.category == 'adventure' %}bg-emerald-100 text-emerald-600
+                            {% elif sa.activity.category == 'culture' %}bg-purple-100 text-purple-600
+                            {% else %}bg-slate-200 text-slate-500{% endif %}">
+                  {% if sa.activity.category == 'sightseeing' %}📸
+                  {% elif sa.activity.category == 'food' %}🍜
+                  {% elif sa.activity.category == 'adventure' %}🏔️
+                  {% elif sa.activity.category == 'culture' %}🏛️
+                  {% else %}⭐{% endif %}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-700 truncate">{{ sa.activity.name }}</p>
+                  <p class="text-xs text-slate-400">${{ "%.0f"|format(sa.custom_cost if sa.custom_cost is not none else sa.activity.estimated_cost) }} · {{ sa.activity.duration_hours }}h</p>
+                </div>
+                <button onclick="removeActivity({{ sa.id }}, 'sa-{{ sa.id }}')"
+                        class="text-red-400 hover:text-red-600 p-1 rounded transition">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-slate-400 italic text-center py-4" id="empty-{{ stop.id }}">
+              No activities yet — click "+ Activity" to add some.
+            </p>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center">
+        <p class="text-4xl mb-4">🗺️</p>
+        <p class="text-slate-500 mb-4">No stops yet. Search for a city and add your first stop!</p>
+        <button @click="showAddStop = true"
+                class="bg-sky-500 hover:bg-sky-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition">
+          Add First Stop
+        </button>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Sidebar: Quick Links ── -->
+    <div class="lg:col-span-2 space-y-4">
+      <h2 class="text-lg font-bold text-slate-700">Trip Tools</h2>
+      {% for label, icon, url, color in [
+        ('View Itinerary', 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', url_for('trips.view_trip', trip_id=trip.id), 'sky'),
+        ('Budget & Costs', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', url_for('budget.budget', trip_id=trip.id), 'emerald'),
+        ('Packing Checklist', 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2m-3 7l2 2 4-4', url_for('trips.checklist', trip_id=trip.id), 'purple'),
+        ('Trip Notes', 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z', url_for('trips.notes', trip_id=trip.id), 'amber'),
+        ('Share Trip', 'M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z', url_for('trips.view_trip', trip_id=trip.id) + '#share', 'rose'),
+      ] %}
+      <a href="{{ url }}"
+         class="flex items-center gap-3 bg-white border border-slate-100 rounded-xl p-4 hover:shadow-md transition group">
+        <div class="w-10 h-10 bg-{{ color }}-50 rounded-xl flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-{{ color }}-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon }}"/>
+          </svg>
+        </div>
+        <span class="font-semibold text-slate-700 group-hover:text-sky-500 transition text-sm">{{ label }}</span>
+        <svg class="w-4 h-4 text-slate-300 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Add Stop Modal ── -->
+  <div x-show="showAddStop" x-cloak
+       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+       @click.self="showAddStop = false">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="text-xl font-bold text-slate-800">Add a Stop</h3>
+        <button @click="showAddStop = false" class="text-slate-400 hover:text-slate-600 transition">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- City search -->
+      <input type="text" x-model="cityQuery" @input.debounce.300ms="searchCities()"
+             class="w-full border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500 mb-3"
+             placeholder="Search cities... (Paris, Tokyo, Bali)">
+
+      <!-- City results -->
+      <div class="max-h-56 overflow-y-auto space-y-2 mb-4">
+        <template x-for="city in cityResults" :key="city.id">
+          <button @click="selectCity(city)"
+                  class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-sky-50 transition text-left border border-transparent"
+                  :class="selectedCity && selectedCity.id === city.id ? 'border-sky-500 bg-sky-50' : ''">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-sky-400 to-indigo-500 overflow-hidden shrink-0">
+              <img :src="city.image_url" class="w-full h-full object-cover" :alt="city.name" @error="$event.target.style.display='none'">
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-slate-800 text-sm" x-text="city.name + ', ' + city.country"></p>
+              <p class="text-xs text-slate-400" x-text="city.region + ' · Cost index: ' + city.cost_index"></p>
+            </div>
+            <svg x-show="selectedCity && selectedCity.id === city.id" class="w-5 h-5 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          </button>
+        </template>
+        <p x-show="cityQuery.length > 0 && cityResults.length === 0" class="text-sm text-slate-400 text-center py-4">No cities found.</p>
+      </div>
+
+      <!-- Stop form -->
+      <form method="POST" action="{{ url_for('trips.add_stop', trip_id=trip.id) }}" class="space-y-3">
+        <input type="hidden" name="city_id" :value="selectedCity ? selectedCity.id : ''">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1 block">Arrival Date</label>
+            <input type="date" name="arrival_date"
+                   class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1 block">Departure Date</label>
+            <input type="date" name="departure_date"
+                   class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+          </div>
+        </div>
+        <button type="submit" :disabled="!selectedCity"
+                class="w-full bg-sky-500 hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed
+                       text-white font-bold py-3 rounded-xl transition"
+                x-text="selectedCity ? 'Add ' + selectedCity.name + ' to Trip' : 'Select a city first'">
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Add Activity Panel ── -->
+  <div x-show="showActivities" x-cloak
+       class="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4"
+       @click.self="showActivities = false">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" @click.stop>
+
+      <!-- Panel header -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+            <svg class="w-4.5 h-4.5 text-white w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold text-slate-800">Activities</h3>
+            <p class="text-xs text-slate-400">Things to do in <span class="font-semibold text-slate-600" x-text="activeCityName"></span></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-400 font-medium" x-show="activityResults.length > 0">
+            <span x-text="activityResults.length"></span> result<span x-show="activityResults.length !== 1">s</span>
+          </span>
+          <button @click="showActivities = false" class="text-slate-400 hover:text-slate-600 transition">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters bar -->
+      <div class="px-4 py-3 border-b border-slate-100 space-y-3 shrink-0 bg-slate-50">
+        <!-- Search -->
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text" x-model="activityQuery" @input.debounce.250ms="searchActivities()"
+                 class="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-white"
+                 placeholder="Search activities…">
+        </div>
+
+        <!-- Category chips -->
+        <div class="flex gap-1.5 flex-wrap">
+          <button @click="setCategory('')"
+                  :class="activityCategory === '' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'"
+                  class="px-3 py-1 rounded-full text-xs font-semibold transition">All</button>
+          <button @click="setCategory('sightseeing')"
+                  :class="activityCategory === 'sightseeing' ? 'bg-sky-500 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:border-sky-300'"
+                  class="px-3 py-1 rounded-full text-xs font-semibold transition">📸 Sightseeing</button>
+          <button @click="setCategory('food')"
+                  :class="activityCategory === 'food' ? 'bg-amber-500 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:border-amber-300'"
+                  class="px-3 py-1 rounded-full text-xs font-semibold transition">🍜 Food</button>
+          <button @click="setCategory('adventure')"
+                  :class="activityCategory === 'adventure' ? 'bg-emerald-500 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:border-emerald-300'"
+                  class="px-3 py-1 rounded-full text-xs font-semibold transition">🏔️ Adventure</button>
+          <button @click="setCategory('culture')"
+                  :class="activityCategory === 'culture' ? 'bg-purple-500 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:border-purple-300'"
+                  class="px-3 py-1 rounded-full text-xs font-semibold transition">🏛️ Culture</button>
+        </div>
+
+        <!-- Cost + Duration filters -->
+        <div class="flex gap-2 flex-wrap">
+          <!-- Cost -->
+          <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5 text-xs">
+            <span class="px-2 text-slate-400 font-medium">💰</span>
+            <button @click="setCost('')" :class="activityCostTier==='' ? 'bg-slate-100 font-bold text-slate-700' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">Any</button>
+            <button @click="setCost('free')" :class="activityCostTier==='free' ? 'bg-slate-100 font-bold text-slate-700' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">Free</button>
+            <button @click="setCost('budget')" :class="activityCostTier==='budget' ? 'bg-slate-100 font-bold text-slate-700' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">&lt;$20</button>
+            <button @click="setCost('mid')" :class="activityCostTier==='mid' ? 'bg-slate-100 font-bold text-slate-700' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">$20–60</button>
+            <button @click="setCost('premium')" :class="activityCostTier==='premium' ? 'bg-slate-100 font-bold text-slate-700' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">$60+</button>
+          </div>
+          <!-- Duration -->
+          <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-0.5 text-xs">
+            <span class="px-2 text-slate-400 font-medium">⏱</span>
+            <button @click="setDuration('')" :class="activityDurationTier==='' ? 'bg-slate-100 font-bold text-slate-700' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">Any</button>
+            <button @click="setDuration('short')" :class="activityDurationTier==='short' ? 'bg-slate-100 font-bold text-slate-700' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">&lt;2h</button>
+            <button @click="setDuration('half')" :class="activityDurationTier==='half' ? 'bg-slate-100 font-bold text-slate-700' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">2–4h</button>
+            <button @click="setDuration('full')" :class="activityDurationTier==='full' ? 'bg-slate-100 font-bold text-slate-700' : 'text-slate-500'" class="px-2.5 py-1 rounded-lg transition">4h+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity list -->
+      <div class="overflow-y-auto flex-1 p-4">
+        <template x-if="activityResults.length > 0">
+          <div class="space-y-3">
+            <template x-for="act in activityResults" :key="act.id">
+              <div class="flex gap-3 p-3 rounded-xl border transition"
+                   :class="addedActivities.includes(act.id) ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100 hover:border-sky-200 hover:bg-sky-50'">
+
+                <!-- Thumbnail -->
+                <div class="w-16 h-16 rounded-xl shrink-0 overflow-hidden flex items-center justify-center text-2xl"
+                     :class="act.image_url ? '' :
+                       act.category === 'sightseeing' ? 'bg-sky-100' :
+                       act.category === 'food' ? 'bg-amber-100' :
+                       act.category === 'adventure' ? 'bg-emerald-100' :
+                       act.category === 'culture' ? 'bg-purple-100' : 'bg-slate-100'">
+                  <template x-if="act.image_url">
+                    <img :src="act.image_url" :alt="act.name" class="w-full h-full object-cover" @error="$el.style.display='none'">
+                  </template>
+                  <template x-if="!act.image_url">
+                    <span x-text="act.category === 'sightseeing' ? '📸' : act.category === 'food' ? '🍜' : act.category === 'adventure' ? '🏔️' : act.category === 'culture' ? '🏛️' : '⭐'"></span>
+                  </template>
+                </div>
+
+                <!-- Info -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="font-bold text-sm text-slate-800 leading-tight" x-text="act.name"></p>
+                    <button @click="addActivity(act)"
+                            :disabled="addedActivities.includes(act.id)"
+                            class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1"
+                            :class="addedActivities.includes(act.id)
+                              ? 'bg-emerald-100 text-emerald-600 cursor-default'
+                              : 'bg-sky-500 hover:bg-sky-600 text-white shadow-sm'">
+                      <span x-show="addedActivities.includes(act.id)">✓ Added</span>
+                      <span x-show="!addedActivities.includes(act.id)">+ Add</span>
+                    </button>
+                  </div>
+
+                  <!-- Meta chips -->
+                  <div class="flex flex-wrap gap-1.5 mt-1.5">
+                    <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
+                          :class="act.category === 'sightseeing' ? 'bg-sky-100 text-sky-700' :
+                                  act.category === 'food' ? 'bg-amber-100 text-amber-700' :
+                                  act.category === 'adventure' ? 'bg-emerald-100 text-emerald-700' :
+                                  act.category === 'culture' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'"
+                          x-text="act.category ? act.category.charAt(0).toUpperCase() + act.category.slice(1) : 'Other'">
+                    </span>
+                    <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                      💰 <span x-text="act.estimated_cost === 0 ? 'Free' : '$' + act.estimated_cost.toFixed(0)"></span>
+                    </span>
+                    <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                      ⏱ <span x-text="act.duration_hours + 'h'"></span>
+                    </span>
+                  </div>
+
+                  <!-- Description -->
+                  <p class="text-xs text-slate-400 mt-1.5 line-clamp-2" x-text="act.description || ''"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <template x-if="activityResults.length === 0">
+          <div class="text-center py-16">
+            <div class="text-4xl mb-3">🎯</div>
+            <p class="text-slate-600 font-semibold">No activities found</p>
+            <p class="text-slate-400 text-xs mt-1">Try clearing some filters</p>
+            <button @click="clearActivityFilters()" class="mt-3 text-xs text-sky-500 font-semibold hover:text-sky-600 transition">
+              Clear filters
+            </button>
+          </div>
+        </template>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/itinerary.js') }}"></script>
+<script>
+  function builderApp() {
+    return {
+      showAddStop: false,
+      cityQuery: '',
+      cityResults: [],
+      selectedCity: null,
+      showActivities: false,
+      activeStopId: null,
+      activeCityId: null,
+      activeCityName: '',
+      activityQuery: '',
+      activityCategory: '',
+      activityCostTier: '',
+      activityDurationTier: '',
+      activityResults: [],
+      addedActivities: [],
+
+      async searchCities() {
+        if (this.cityQuery.length < 1) { this.cityResults = []; return; }
+        const res = await fetch('/api/cities?q=' + encodeURIComponent(this.cityQuery));
+        this.cityResults = await res.json();
+      },
+
+      selectCity(city) {
+        this.selectedCity = city;
+      },
+
+      openActivities(stopId, cityId, cityName) {
+        this.activeStopId = stopId;
+        this.activeCityId = cityId;
+        this.activeCityName = cityName;
+        this.activityQuery = '';
+        this.activityCategory = '';
+        this.activityCostTier = '';
+        this.activityDurationTier = '';
+        this.showActivities = true;
+        this.searchActivities();
+      },
+
+      setCategory(cat) {
+        this.activityCategory = cat;
+        this.searchActivities();
+      },
+
+      setCost(tier) {
+        this.activityCostTier = tier;
+        this.searchActivities();
+      },
+
+      setDuration(tier) {
+        this.activityDurationTier = tier;
+        this.searchActivities();
+      },
+
+      clearActivityFilters() {
+        this.activityQuery = '';
+        this.activityCategory = '';
+        this.activityCostTier = '';
+        this.activityDurationTier = '';
+        this.searchActivities();
+      },
+
+      async searchActivities() {
+        const params = new URLSearchParams({
+          city_id: this.activeCityId,
+          q: this.activityQuery,
+          category: this.activityCategory,
+          cost_tier: this.activityCostTier,
+          duration_tier: this.activityDurationTier
+        });
+        const res = await fetch('/api/activities?' + params);
+        this.activityResults = await res.json();
+      },
+
+      async addActivity(act) {
+        const formData = new FormData();
+        formData.append('activity_id', act.id);
+        const res = await fetch('/stops/' + this.activeStopId + '/activities', {
+          method: 'POST', body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.addedActivities.push(act.id);
+          appendActivityCard(this.activeStopId, data);
+        }
+      }
+    };
+  }
+
+  async function removeActivity(saId, elementId) {
+    if (!confirm('Remove this activity?')) return;
+    const res = await fetch('/stop-activities/' + saId + '/delete', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) document.getElementById(elementId).remove();
+  }
+
+  // Drag to reorder
+  const list = document.getElementById('stops-list');
+  if (list) {
+    Sortable.create(list, {
+      handle: '.drag-handle',
+      animation: 150,
+      onEnd: async () => {
+        const order = [...list.children].map(el => el.dataset.id);
+        await fetch('/stops/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order })
+        });
+      }
+    });
+  }
+</script>
+{% endblock %}

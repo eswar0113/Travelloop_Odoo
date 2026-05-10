@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% block title %}My Trips — Traveloop{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Hero banner -->
+  <div class="rounded-2xl mb-8 overflow-hidden relative" style="min-height:180px;
+       background-image:url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600&q=80&auto=format&fit=crop');
+       background-size:cover;background-position:center 60%">
+    <div style="position:absolute;inset:0;background:rgba(20,20,19,.72)"></div>
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 100% at 0% 50%,rgba(194,65,12,.18) 0%,transparent 60%);pointer-events:none"></div>
+    <div class="relative z-10 p-7 sm:p-8 flex items-end justify-between gap-4" style="min-height:180px">
+      <div>
+        <p style="color:rgba(255,255,255,.45);font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.4rem">Your Adventures</p>
+        <h1 style="font-size:clamp(1.75rem,3.5vw,2.5rem);font-weight:800;color:#fff;letter-spacing:-.04em;line-height:1.1">My Trips</h1>
+        <p style="color:rgba(255,255,255,.45);font-size:.875rem;margin-top:.4rem">
+          {{ trips|length }} trip{{ 's' if trips|length != 1 }} total
+        </p>
+      </div>
+      <a href="{{ url_for('trips.create_trip') }}" class="btn-premium btn-accent shrink-0">
+        <svg style="width:14px;height:14px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        New Trip
+      </a>
+    </div>
+  </div>
+
+  <!-- Search + Filter bar -->
+  <form method="GET" action="{{ url_for('trips.my_trips') }}"
+        class="flex gap-3 mb-8">
+    <div class="flex-1 relative">
+      <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      <input type="text" name="q" value="{{ q }}" placeholder="Search trips…" class="input-premium pl-9">
+    </div>
+    <button type="submit" class="btn-premium text-sm">Search</button>
+    {% if q %}
+    <a href="{{ url_for('trips.my_trips') }}"
+       class="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 font-semibold text-sm transition flex items-center">
+      Clear
+    </a>
+    {% endif %}
+  </form>
+
+  {% if not trips %}
+  <div class="text-center py-24 fade-up">
+    <div class="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6" style="background:#f5f4f0">
+      <span style="font-size:2rem">🗺️</span>
+    </div>
+    <h2 class="text-2xl font-extrabold mb-2" style="color:#141413">{{ 'No results for "' ~ q ~ '"' if q else 'No trips yet' }}</h2>
+    <p class="mb-8 max-w-sm mx-auto" style="color:#8a8680">{{ 'Try a different search term.' if q else 'Create your first trip and start building your dream itinerary.' }}</p>
+    {% if not q %}
+    <a href="{{ url_for('trips.create_trip') }}" class="btn-premium inline-flex">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+      Plan Your First Trip
+    </a>
+    {% endif %}
+  </div>
+
+  {% else %}
+
+  {% macro trip_row(trip) %}
+  <div class="premium-card p-4 flex items-center gap-4 group transition">
+    <div class="w-16 h-16 rounded-xl shrink-0 overflow-hidden" style="background:#e8e5df">
+      {% if trip.cover_photo %}
+      <img src="{{ trip.cover_photo }}" class="w-full h-full object-cover" alt="{{ trip.name }}" onerror="this.style.display='none'">
+      {% endif %}
+    </div>
+    <div class="flex-1 min-w-0">
+      <h3 class="font-extrabold truncate transition" style="color:#141413">{{ trip.name }}</h3>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs" style="color:#8a8680">
+        {% if trip.start_date %}
+        <span>{{ trip.start_date.strftime('%b %d') }}{% if trip.end_date %} – {{ trip.end_date.strftime('%b %d, %Y') }}{% endif %} · <strong class="text-slate-600">{{ trip.total_days }} day{{ 's' if trip.total_days != 1 }}</strong></span>
+        {% else %}
+        <span class="italic" style="color:#c4c1bb">Dates not set</span>
+        {% endif %}
+        {% if trip.stops %}
+        <span>{{ trip.stops|length }} stop{{ 's' if trip.stops|length != 1 }}</span>
+        {% endif %}
+        {% if trip.total_budget > 0 %}
+        <span style="color:#15803d;font-weight:600">Est. ${{ "%.0f"|format(trip.total_budget) }}</span>
+        {% endif %}
+      </div>
+      {% if trip.stops %}
+      <div class="flex flex-wrap gap-1 mt-1.5">
+        {% for stop in trip.stops[:4] %}
+        <span class="badge" style="background:#fff7ed;color:#c2410c;font-size:.65rem">{{ stop.city.name }}</span>
+        {% endfor %}
+        {% if trip.stops|length > 4 %}
+        <span class="badge" style="background:#f5f4f0;color:#8a8680;font-size:.65rem">+{{ trip.stops|length - 4 }}</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      {% if trip.is_public %}
+      <span class="badge bg-emerald-100 text-emerald-600 text-xs">🌍 Public</span>
+      {% endif %}
+      <a href="{{ url_for('trips.view_trip', trip_id=trip.id) }}"
+         class="px-3 py-1.5 rounded-lg text-sm font-bold transition"
+         style="background:#f5f4f0;color:#141413"
+         onmouseover="this.style.background='#141413';this.style.color='#fff'"
+         onmouseout="this.style.background='#f5f4f0';this.style.color='#141413'">
+        View
+      </a>
+      <a href="{{ url_for('trips.builder', trip_id=trip.id) }}"
+         class="px-3 py-1.5 rounded-lg text-sm font-semibold transition"
+         style="background:#f5f4f0;color:#4b4945"
+         onmouseover="this.style.background='#e8e5df'"
+         onmouseout="this.style.background='#f5f4f0'">
+        Edit
+      </a>
+      <form method="POST" action="{{ url_for('trips.delete_trip', trip_id=trip.id) }}"
+            onsubmit="return confirm('Delete \'{{ trip.name }}\' permanently?')">
+        <button type="submit"
+                class="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition opacity-0 group-hover:opacity-100">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endmacro %}
+
+  <div class="space-y-8 stagger">
+
+    <!-- Ongoing -->
+    {% if ongoing %}
+    <section class="fade-up">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+        <h2 class="text-base font-extrabold" style="color:#141413">Ongoing</h2>
+        <span class="badge" style="background:#f0fdf4;color:#15803d;font-size:.65rem">{{ ongoing|length }}</span>
+      </div>
+      <div class="space-y-3">
+        {% for trip in ongoing %}{{ trip_row(trip) }}{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Upcoming -->
+    {% if upcoming %}
+    <section class="fade-up">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:#c2410c"></span>
+        <h2 class="text-base font-extrabold" style="color:#141413">Upcoming</h2>
+        <span class="badge" style="background:#fff7ed;color:#c2410c;font-size:.65rem">{{ upcoming|length }}</span>
+      </div>
+      <div class="space-y-3">
+        {% for trip in upcoming %}{{ trip_row(trip) }}{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- No dates (unscheduled) -->
+    {% if no_dates %}
+    <section class="fade-up">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+        <h2 class="text-base font-extrabold" style="color:#141413">Planning</h2>
+        <span class="badge" style="background:#f5f4f0;color:#8a8680;font-size:.65rem">{{ no_dates|length }}</span>
+      </div>
+      <div class="space-y-3">
+        {% for trip in no_dates %}{{ trip_row(trip) }}{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Completed -->
+    {% if completed %}
+    <section class="fade-up">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-300 shrink-0"></span>
+        <h2 class="text-base font-extrabold" style="color:#4b4945">Completed</h2>
+        <span class="badge" style="background:#f5f4f0;color:#8a8680;font-size:.65rem">{{ completed|length }}</span>
+      </div>
+      <div class="space-y-3">
+        {% for trip in completed %}{{ trip_row(trip) }}{% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

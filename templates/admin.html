@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard — Traveloop{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+{% set cat_emoji = {'sightseeing': '📸', 'food': '🍜', 'adventure': '🏔️', 'culture': '🏛️'} %}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-8">
+    <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center shadow">
+      <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+    </div>
+    <div>
+      <h1 class="text-3xl font-extrabold text-slate-800">Admin Dashboard</h1>
+      <p class="text-slate-400 text-sm">Platform analytics and user management</p>
+    </div>
+  </div>
+
+  <!-- ── KPI Stats ── -->
+  <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8 stagger">
+    {% for label, value, color, icon in [
+      ('Users', total_users, '#0ea5e9', '👤'),
+      ('Trips', total_trips, '#6366f1', '🗺️'),
+      ('Stops', total_stops, '#f59e0b', '📍'),
+      ('Public Trips', public_trips, '#10b981', '🌍'),
+      ('Activities Used', total_activities, '#ef4444', '🎯'),
+    ] %}
+    <div class="premium-card p-5 fade-up">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xl">{{ icon }}</span>
+        <div class="w-2 h-2 rounded-full" style="background:{{ color }}"></div>
+      </div>
+      <p class="text-3xl font-extrabold text-slate-800">{{ value }}</p>
+      <p class="text-xs text-slate-500 mt-0.5 font-medium">{{ label }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── Charts Row ── -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+    <!-- User signup trend -->
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-4">New Signups — Last 30 Days</h2>
+      <div class="relative h-56">
+        <canvas id="signupChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Top cities bar -->
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-4">Most Added Cities</h2>
+      {% if top_cities %}
+      <div class="space-y-3">
+        {% for city_name, count in top_cities %}
+        {% set pct = (count / top_cities[0][1] * 100)|round(0)|int %}
+        <div class="flex items-center gap-3">
+          <span class="text-sm font-semibold text-slate-700 w-24 truncate shrink-0">{{ city_name }}</span>
+          <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+            <div class="h-2 rounded-full transition-all duration-700"
+                 style="width:{{ pct }}%; background:linear-gradient(90deg,#0ea5e9,#6366f1)"></div>
+          </div>
+          <span class="text-sm font-bold text-slate-600 w-6 text-right shrink-0">{{ count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-slate-400 text-sm italic py-8 text-center">No city data yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Top Activities + Most Active Users ── -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+    <!-- Top activities -->
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-4">Top Activities</h2>
+      {% if top_activities %}
+      <div class="space-y-2">
+        {% for act_name, act_cat, count in top_activities %}
+        <div class="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl">
+          <span class="text-lg shrink-0">{{ cat_emoji.get(act_cat, '⭐') }}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-slate-700 truncate">{{ act_name }}</p>
+            <p class="text-xs text-slate-400 capitalize">{{ act_cat or 'other' }}</p>
+          </div>
+          <span class="text-xs font-bold text-white px-2.5 py-1 rounded-full shrink-0"
+                style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+            {{ count }}×
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-slate-400 text-sm italic py-8 text-center">No activity data yet.</p>
+      {% endif %}
+    </div>
+
+    <!-- Most active users -->
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-4">Most Active Users</h2>
+      {% if trips_per_user %}
+      <div class="space-y-2">
+        {% for uname, count in trips_per_user %}
+        {% if count > 0 %}
+        <div class="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0"
+               style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+            {{ (uname or '?')[0].upper() }}
+          </div>
+          <span class="text-sm font-semibold text-slate-700 flex-1 truncate">{{ uname or 'Unknown' }}</span>
+          <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full shrink-0">
+            {{ count }} trip{{ 's' if count != 1 }}
+          </span>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Recent Users Table ── -->
+  <div class="premium-card p-6 mb-6 overflow-hidden">
+    <h2 class="text-base font-extrabold text-slate-800 mb-4">Recent Users</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-100">
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">User</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Email</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Trips</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Joined</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for user in recent_users %}
+          <tr class="hover:bg-slate-50 transition group">
+            <td class="py-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden"
+                     style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+                  {% if user.photo_url %}<img src="{{ user.photo_url }}" class="w-full h-full object-cover" onerror="this.style.display='none'">{% endif %}
+                  {{ user.name[0].upper() }}
+                </div>
+                <span class="font-semibold text-slate-800">{{ user.name }}</span>
+              </div>
+            </td>
+            <td class="py-3 text-slate-500">{{ user.email }}</td>
+            <td class="py-3">
+              <span class="bg-sky-100 text-sky-600 px-2 py-0.5 rounded-full text-xs font-bold">{{ user.trips|length }}</span>
+            </td>
+            <td class="py-3 text-slate-400 text-xs">{{ user.created_at.strftime('%b %d, %Y') }}</td>
+            <td class="py-3">
+              {% if user.email != 'admin@traveloop.com' %}
+              <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}"
+                    onsubmit="return confirm('Delete user {{ user.name }}? This cannot be undone.')">
+                <button class="text-xs text-red-400 hover:text-red-600 font-semibold opacity-0 group-hover:opacity-100 transition">
+                  Delete
+                </button>
+              </form>
+              {% else %}
+              <span class="text-xs text-slate-300">Admin</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Recent Trips Table ── -->
+  <div class="premium-card p-6 overflow-hidden">
+    <h2 class="text-base font-extrabold text-slate-800 mb-4">Recent Trips</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-100">
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Trip</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">User</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Stops</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Visibility</th>
+            <th class="pb-3 text-left font-semibold text-slate-500 text-xs uppercase tracking-wide">Created</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for trip in recent_trips %}
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 font-semibold text-slate-800 max-w-xs truncate">{{ trip.name }}</td>
+            <td class="py-3 text-slate-500">{{ trip.user.name }}</td>
+            <td class="py-3 text-slate-600">{{ trip.stops|length }}</td>
+            <td class="py-3">
+              {% if trip.is_public %}
+              <span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-xs font-bold">🌍 Public</span>
+              {% else %}
+              <span class="text-slate-400 text-xs">Private</span>
+              {% endif %}
+            </td>
+            <td class="py-3 text-slate-400 text-xs">{{ trip.created_at.strftime('%b %d, %Y') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const signupLabels = {{ signup_labels | tojson }};
+const signupData   = {{ signup_data | tojson }};
+
+const ctx = document.getElementById('signupChart').getContext('2d');
+const grad = ctx.createLinearGradient(0, 0, 0, 220);
+grad.addColorStop(0, 'rgba(14,165,233,0.25)');
+grad.addColorStop(1, 'rgba(14,165,233,0)');
+
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: signupLabels,
+    datasets: [{
+      label: 'New users',
+      data: signupData,
+      borderColor: '#0ea5e9',
+      backgroundColor: grad,
+      borderWidth: 2.5,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointBackgroundColor: '#0ea5e9',
+      pointHoverRadius: 5,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} new user${ctx.parsed.y !== 1 ? 's' : ''}` } }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { stepSize: 1, precision: 0 },
+        grid: { color: 'rgba(0,0,0,0.04)' }
+      },
+      x: {
+        grid: { display: false },
+        ticks: {
+          maxTicksLimit: 8,
+          maxRotation: 0
+        }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

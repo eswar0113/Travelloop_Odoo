@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — Traveloop{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero ──────────────────────────────────── -->
+<div style="position:relative;overflow:hidden;background:#141413;
+     background-image:url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1800&q=80&auto=format&fit=crop');
+     background-size:cover;background-position:center 40%">
+  <!-- Photo overlay -->
+  <div style="position:absolute;inset:0;background:rgba(20,20,19,.76)"></div>
+  <!-- Warm edge accent -->
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 55% 80% at 100% 0%,rgba(194,65,12,.18) 0%,transparent 60%);pointer-events:none"></div>
+
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 py-14 sm:py-20" style="position:relative;z-index:1">
+    <div style="display:flex;align-items:center;gap:3rem">
+      <!-- Text -->
+      <div style="flex:1;max-width:32rem">
+        <p class="text-xs font-bold tracking-widest uppercase mb-3"
+           style="color:rgba(255,255,255,.45)">Welcome back, {{ current_user.name.split()[0] }}</p>
+        <h1 class="font-extrabold leading-none mb-5"
+            style="font-size:clamp(2.25rem,5vw,3.5rem);color:#fff;letter-spacing:-.03em">
+          Where are you<br>headed next?
+        </h1>
+        <p class="text-base mb-8" style="color:rgba(255,255,255,.5);max-width:38ch">
+          Every great journey starts with a single plan. Build yours in minutes.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a href="{{ url_for('trips.create_trip') }}"
+             class="btn-premium btn-accent px-6 py-2.5">
+            <svg style="width:14px;height:14px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            Plan a Trip
+          </a>
+          <a href="{{ url_for('cities.search_page') }}"
+             class="inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg glass transition"
+             style="color:rgba(255,255,255,.8)"
+             onmouseover="this.style.background='rgba(255,255,255,.18)'"
+             onmouseout="this.style.background=''">
+            Browse Destinations →
+          </a>
+        </div>
+      </div>
+
+      <!-- 3D Globe (desktop only) -->
+      <div class="hidden lg:flex items-center justify-center shrink-0"
+           style="width:300px;height:300px;position:relative">
+        <canvas id="globe-canvas" width="300" height="300"
+                style="width:300px;height:300px;opacity:.9"></canvas>
+        <!-- Glow ring under globe -->
+        <div style="position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);
+                    width:180px;height:24px;background:radial-gradient(ellipse,rgba(194,65,12,.35),transparent 70%);
+                    filter:blur(6px);pointer-events:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Stats strip ────────────────────────────── -->
+<div class="section-stripe">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 py-5">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-px" style="background:#e8e5df">
+      {% for val, label in [
+        (total_trips, 'Total Trips'),
+        (total_cities, 'Cities Visited'),
+        ('1' if upcoming else '0', 'Upcoming'),
+        (total_cities, 'Countries'),
+      ] %}
+      <div class="flex items-center gap-4 px-6 py-5" style="background:#fff">
+        <div>
+          <p class="text-2xl font-extrabold" style="color:#141413;letter-spacing:-.03em">{{ val }}</p>
+          <p class="text-xs font-medium mt-0.5" style="color:#8a8680">{{ label }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- ── Main ───────────────────────────────────── -->
+<div class="max-w-7xl mx-auto px-5 sm:px-8 py-10">
+
+  <!-- Upcoming banner -->
+  {% if upcoming %}
+  <div class="rounded-xl p-5 mb-8 flex items-center justify-between gap-4 fade-up"
+       style="background:#fff7ed;border:1px solid #fed7aa">
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+           style="background:#c2410c">
+        <svg style="width:18px;height:18px;color:#fff" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-xs font-bold uppercase tracking-wide" style="color:#c2410c">Next Adventure</p>
+        <p class="font-extrabold" style="color:#7c2d12;letter-spacing:-.01em">{{ upcoming.name }}</p>
+        <p class="text-sm" style="color:#9a3412">{{ upcoming.start_date.strftime('%B %d, %Y') if upcoming.start_date }}</p>
+      </div>
+    </div>
+    <a href="{{ url_for('trips.view_trip', trip_id=upcoming.id) }}"
+       class="btn-premium btn-accent text-sm py-2 px-4 shrink-0">
+      View Trip →
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+    <!-- Recent Trips -->
+    <div class="lg:col-span-2">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="text-xl font-extrabold" style="color:#141413;letter-spacing:-.02em">Recent Trips</h2>
+          <p class="text-sm mt-0.5" style="color:#8a8680">Your latest adventures</p>
+        </div>
+        <a href="{{ url_for('trips.my_trips') }}"
+           class="text-sm font-semibold transition" style="color:#c2410c"
+           onmouseover="this.style.color='#9a3412'"
+           onmouseout="this.style.color='#c2410c'">
+          All trips →
+        </a>
+      </div>
+
+      {% if recent_trips %}
+      <div class="space-y-3 stagger">
+        {% for trip in recent_trips %}
+        <div class="premium-card group">
+          <div class="flex items-center gap-4 p-4">
+            <div class="trip-card-img w-14 h-14 rounded-xl shrink-0 overflow-hidden"
+                 style="background:#e8e5df">
+              {% if trip.cover_photo %}
+              <img src="{{ trip.cover_photo }}" class="w-full h-full object-cover" alt="{{ trip.name }}" onerror="this.style.display='none'">
+              {% endif %}
+              {% if not trip.cover_photo %}
+              <div class="w-full h-full flex items-center justify-center text-xl">✈️</div>
+              {% endif %}
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-bold text-sm truncate" style="color:#141413;letter-spacing:-.01em">{{ trip.name }}</h3>
+              <p class="text-xs mt-0.5" style="color:#8a8680">
+                {% if trip.start_date %}
+                  {{ trip.start_date.strftime('%b %d') }}{% if trip.end_date %} – {{ trip.end_date.strftime('%b %d, %Y') }}{% endif %}
+                  · <strong style="color:#4b4945">{{ trip.total_days }}d</strong>
+                {% else %}Dates not set{% endif %}
+              </p>
+              <div class="flex gap-1.5 mt-1.5">
+                <span class="badge" style="background:#f5f4f0;color:#4b4945;font-size:.65rem">
+                  {{ trip.stops|length }} stop{{ 's' if trip.stops|length != 1 }}
+                </span>
+                {% if trip.is_public %}
+                <span class="badge" style="background:#f0fdf4;color:#15803d;font-size:.65rem">Public</span>
+                {% endif %}
+              </div>
+            </div>
+            <a href="{{ url_for('trips.view_trip', trip_id=trip.id) }}"
+               class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition"
+               style="background:#f5f4f0;color:#141413"
+               onmouseover="this.style.background='#141413';this.style.color='#fff'"
+               onmouseout="this.style.background='#f5f4f0';this.style.color='#141413'">
+              View →
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="rounded-xl p-12 text-center" style="background:#fff;border:2px dashed #e8e5df">
+        <div class="text-4xl mb-3">🗺️</div>
+        <p class="font-bold mb-1" style="color:#141413">No trips yet</p>
+        <p class="text-sm mb-5" style="color:#8a8680">Start planning your first adventure</p>
+        <a href="{{ url_for('trips.create_trip') }}" class="btn-premium text-sm py-2 px-5">
+          Plan Your First Trip
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Popular Destinations -->
+    <div>
+      <div class="mb-5">
+        <h2 class="text-xl font-extrabold" style="color:#141413;letter-spacing:-.02em">Popular Destinations</h2>
+        <p class="text-sm mt-0.5" style="color:#8a8680">Trending right now</p>
+      </div>
+      <div class="space-y-2 stagger">
+        {% for city in popular_cities[:6] %}
+        <a href="{{ url_for('cities.search_page') }}?q={{ city.name }}"
+           class="premium-card p-3 flex items-center gap-3 group block">
+          <div class="trip-card-img w-11 h-11 rounded-xl shrink-0 overflow-hidden"
+               style="background:#e8e5df">
+            {% if city.image_url %}
+            <img src="{{ city.image_url }}" class="w-full h-full object-cover" alt="{{ city.name }}" onerror="this.style.display='none'">
+            {% endif %}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-bold text-sm truncate" style="color:#141413">{{ city.name }}</p>
+            <p class="text-xs" style="color:#8a8680">{{ city.country }}</p>
+          </div>
+          <span class="badge shrink-0" style="
+            {% if city.cost_index < 40 %}background:#f0fdf4;color:#15803d
+            {% elif city.cost_index < 70 %}background:#fff7ed;color:#c2410c
+            {% else %}background:#f5f4f0;color:#4b4945{% endif %}
+            ;font-size:.65rem">
+            {% if city.cost_index < 40 %}Budget{% elif city.cost_index < 70 %}Mid{% else %}Luxury{% endif %}
+          </span>
+        </a>
+        {% endfor %}
+        <a href="{{ url_for('cities.search_page') }}"
+           class="block text-center text-sm font-semibold py-3 rounded-xl transition"
+           style="color:#c2410c"
+           onmouseover="this.style.background='#fff7ed'"
+           onmouseout="this.style.background='transparent'">
+          See all destinations →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10 pt-8 border-t stagger" style="border-color:#e8e5df">
+    {% for label, ep, emoji in [
+      ('My Trips',  'trips.my_trips',      '🗺️'),
+      ('Explore',   'cities.search_page',  '🔍'),
+      ('Community', 'community.feed',      '👥'),
+      ('Profile',   'profile.profile',     '👤'),
+    ] %}
+    <a href="{{ url_for(ep) }}"
+       class="premium-card p-5 flex items-center gap-3 group">
+      <span class="text-2xl">{{ emoji }}</span>
+      <div>
+        <p class="font-bold text-sm" style="color:#141413">{{ label }}</p>
+        <p class="text-xs mt-0.5" style="color:#8a8680">Go →</p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(function() {
+  const canvas = document.getElementById('globe-canvas');
+  if (!canvas || !window.THREE) return;
+  const W = 300, H = 300;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
+  camera.position.z = 3.0;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  /* Wireframe globe */
+  const globe = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 22, 16),
+    new THREE.MeshBasicMaterial({ color: 0xc2410c, wireframe: true, transparent: true, opacity: 0.30 })
+  );
+  scene.add(globe);
+
+  /* Inner solid */
+  scene.add(new THREE.Mesh(
+    new THREE.SphereGeometry(0.97, 32, 32),
+    new THREE.MeshBasicMaterial({ color: 0x0e0e0d, transparent: true, opacity: 0.50 })
+  ));
+
+  /* Equator ring */
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(1.0, 0.012, 8, 80),
+    new THREE.MeshBasicMaterial({ color: 0xc2410c, transparent: true, opacity: 0.70 })
+  );
+  ring.rotation.x = Math.PI / 2;
+  scene.add(ring);
+
+  /* Latitude rings */
+  [-0.55, 0.55].forEach(lat => {
+    const r = Math.sqrt(1 - lat * lat);
+    const lr = new THREE.Mesh(
+      new THREE.TorusGeometry(r, 0.007, 6, 60),
+      new THREE.MeshBasicMaterial({ color: 0xc2410c, transparent: true, opacity: 0.35 })
+    );
+    lr.position.y = lat;
+    lr.rotation.x = Math.PI / 2;
+    scene.add(lr);
+  });
+
+  /* City dots on surface */
+  const dotMat = new THREE.MeshBasicMaterial({ color: 0xff8c5a });
+  [[1.02,0.3,0.15],[-0.9,0.5,0.4],[0.2,1.0,0.3],
+   [0.6,-0.8,0.2],[-0.3,-0.2,1.0],[0.85,0.1,-0.5]].forEach(([x,y,z]) => {
+    const l = Math.sqrt(x*x+y*y+z*z);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.035,8,8), dotMat);
+    dot.position.set(x/l, y/l, z/l);
+    scene.add(dot);
+  });
+
+  globe.rotation.x = 0.25;
+
+  function animate() {
+    requestAnimationFrame(animate);
+    globe.rotation.y += 0.0035;
+    ring.rotation.y  += 0.0035;
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
+{% endblock %}

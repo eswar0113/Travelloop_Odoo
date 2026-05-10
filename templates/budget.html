@@ -1,0 +1,388 @@
+{% extends 'base.html' %}
+{% block title %}Budget — {{ trip.name }}{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+{% set cat_icons  = {'transport': '✈️', 'stay': '🏨', 'meals': '🍽️', 'activities': '🎯', 'other': '📦'} %}
+{% set cat_colors = {'transport': '#0ea5e9', 'stay': '#6366f1', 'meals': '#f59e0b', 'activities': '#10b981', 'other': '#94a3b8'} %}
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-sm text-slate-400 mb-6">
+    <a href="{{ url_for('trips.my_trips') }}" class="hover:text-sky-500 transition font-medium">My Trips</a>
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <a href="{{ url_for('trips.view_trip', trip_id=trip.id) }}" class="hover:text-sky-500 transition font-medium">{{ trip.name }}</a>
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <span class="text-slate-600 font-medium">Budget</span>
+  </div>
+
+  <!-- Page header -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-3xl font-extrabold text-slate-800">Trip Budget</h1>
+      <p class="text-slate-500 mt-1 text-sm">Track spending and stay within your goal.</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('budget.invoice', trip_id=trip.id) }}"
+         class="btn-premium text-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Export Invoice
+      </a>
+      <a href="{{ url_for('trips.builder', trip_id=trip.id) }}"
+         class="text-sm font-semibold text-sky-500 hover:text-sky-600 transition flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Back to Builder
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Over-budget Alert ── -->
+  {% if over_budget %}
+  <div class="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
+    <div class="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+      <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    </div>
+    <div>
+      <p class="font-extrabold text-red-700 text-sm">Over Budget!</p>
+      <p class="text-red-600 text-xs mt-0.5">
+        Your estimated spend of <strong>${{ "%.0f"|format(grand_total) }}</strong> exceeds your
+        <strong>${{ "%.0f"|format(budget_target) }}</strong> target by
+        <strong>${{ "%.0f"|format(grand_total - budget_target) }}</strong>.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Top Stats ── -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 stagger">
+    <!-- Total -->
+    <div class="hero-gradient col-span-2 sm:col-span-1 rounded-2xl p-5 shadow-lg text-white">
+      <p class="text-sky-300 text-xs font-semibold uppercase tracking-wide mb-1">Total Spend</p>
+      <p class="text-4xl font-extrabold">${{ "%.0f"|format(grand_total) }}</p>
+      <p class="text-sky-200 text-xs mt-1">{{ trip.total_days }} day{{ 's' if trip.total_days != 1 }} · {{ trip.stops|length }} stop{{ 's' if trip.stops|length != 1 }}</p>
+    </div>
+    <!-- Per day -->
+    <div class="stat-card">
+      <p class="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-1">Per Day</p>
+      <p class="text-3xl font-extrabold text-slate-800">${{ "%.0f"|format(avg_per_day) }}</p>
+      <p class="text-slate-400 text-xs mt-1">average / day</p>
+    </div>
+    <!-- Activities -->
+    <div class="stat-card">
+      <p class="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-1">Activities</p>
+      <p class="text-3xl font-extrabold text-slate-800">${{ "%.0f"|format(manual_by_cat['activities']) }}</p>
+      <p class="text-slate-400 text-xs mt-1">planned experiences</p>
+    </div>
+    <!-- Budget target -->
+    <div class="stat-card">
+      <p class="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-1">Goal</p>
+      <p class="text-3xl font-extrabold {% if over_budget %}text-red-500{% elif budget_target > 0 %}text-emerald-600{% else %}text-slate-400{% endif %}">
+        {% if budget_target > 0 %}${{ "%.0f"|format(budget_target) }}{% else %}—{% endif %}
+      </p>
+      <p class="text-slate-400 text-xs mt-1">{% if budget_target > 0 %}budget target{% else %}not set{% endif %}</p>
+    </div>
+  </div>
+
+  <!-- ── Budget Target & Progress ── -->
+  <div class="premium-card p-5 mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex-1 min-w-0">
+        <h2 class="text-base font-extrabold text-slate-800 mb-1">Budget Goal</h2>
+        {% if budget_target > 0 %}
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs text-slate-500 font-medium">${{ "%.0f"|format(grand_total) }} of ${{ "%.0f"|format(budget_target) }}</span>
+          <span class="text-xs font-bold {% if over_budget %}text-red-500{% else %}text-emerald-600{% endif %}">
+            ({{ budget_pct }}%)
+          </span>
+          {% if not over_budget %}
+          <span class="text-xs text-slate-400">· ${{ "%.0f"|format(budget_target - grand_total) }} remaining</span>
+          {% endif %}
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+          <div class="h-3 rounded-full transition-all duration-700"
+               style="width: {{ budget_pct }}%;
+                      background: {% if over_budget %}linear-gradient(90deg,#ef4444,#f97316){% else %}linear-gradient(90deg,#0ea5e9,#10b981){% endif %}">
+          </div>
+        </div>
+        {% else %}
+        <p class="text-sm text-slate-400">Set a target to track your budget progress.</p>
+        {% endif %}
+      </div>
+      <form method="POST" action="{{ url_for('budget.set_budget_target', trip_id=trip.id) }}"
+            class="flex gap-2 shrink-0">
+        <input type="number" name="budget_target" min="1" step="1"
+               value="{{ budget_target|int if budget_target else '' }}"
+               placeholder="e.g. 2000"
+               class="input-premium w-32 py-2 text-sm">
+        <button type="submit" class="btn-premium py-2 text-sm">
+          {% if budget_target > 0 %}Update{% else %}Set Goal{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Charts Row ── -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Donut chart -->
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-4">Spend by Category</h2>
+      <div class="relative h-60">
+        <canvas id="pieChart"></canvas>
+        <div id="chartCenter" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div class="text-center">
+            <p class="text-2xl font-extrabold text-slate-800">${{ "%.0f"|format(grand_total) }}</p>
+            <p class="text-xs text-slate-400 font-medium">total</p>
+          </div>
+        </div>
+      </div>
+      <!-- Legend -->
+      <div class="mt-4 grid grid-cols-2 gap-y-2 gap-x-4">
+        {% for cat in categories %}
+        {% if manual_by_cat[cat] > 0 %}
+        <div class="flex items-center gap-2 text-xs">
+          <div class="w-2.5 h-2.5 rounded-full shrink-0" style="background:{{ cat_colors[cat] }}"></div>
+          <span class="text-slate-600 font-medium capitalize">{{ cat }}</span>
+          <span class="ml-auto font-bold text-slate-700">${{ "%.0f"|format(manual_by_cat[cat]) }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Bar chart: activity cost per city -->
+    <div class="premium-card p-6">
+      <h2 class="text-base font-extrabold text-slate-800 mb-4">Activity Cost by Stop</h2>
+      {% if stop_costs %}
+      <div class="relative h-60">
+        <canvas id="barChart"></canvas>
+      </div>
+      {% else %}
+      <div class="h-60 flex items-center justify-center text-slate-400 text-sm">
+        <div class="text-center">
+          <div class="text-3xl mb-2">📍</div>
+          Add stops to see the breakdown
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Category Progress Bars ── -->
+  <div class="premium-card p-6 mb-6">
+    <h2 class="text-base font-extrabold text-slate-800 mb-5">Breakdown by Category</h2>
+    {% if grand_total > 0 %}
+    <div class="space-y-4">
+      {% for cat in categories %}
+      {% if manual_by_cat[cat] > 0 %}
+      {% set pct = ((manual_by_cat[cat] / grand_total) * 100)|round(1) %}
+      <div class="flex items-center gap-4">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+             style="background:{{ cat_colors[cat] }}20">
+          {{ cat_icons.get(cat, '📦') }}
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-sm font-bold text-slate-700 capitalize">{{ cat }}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400">{{ pct }}%</span>
+              <span class="text-sm font-extrabold text-slate-800">${{ "%.0f"|format(manual_by_cat[cat]) }}</span>
+            </div>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2">
+            <div class="h-2 rounded-full transition-all duration-500"
+                 style="width:{{ pct }}%; background:{{ cat_colors[cat] }}"></div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-slate-400 text-sm text-center py-6">No expenses tracked yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- ── Per-Stop Breakdown ── -->
+  {% if stop_costs %}
+  <div class="premium-card p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-extrabold text-slate-800">Cost per Stop</h2>
+      {% if daily_budget > 0 %}
+      <span class="text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full font-medium">
+        Budget/day: <strong>${{ "%.0f"|format(daily_budget) }}</strong>
+      </span>
+      {% endif %}
+    </div>
+    <div class="space-y-3">
+      {% for s in stop_costs %}
+      <div class="flex items-center gap-4 p-3.5 rounded-xl border transition
+                  {% if s.over_budget %}border-red-200 bg-red-50{% else %}border-slate-100 hover:bg-slate-50{% endif %}">
+        <!-- City -->
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white font-bold text-sm"
+             style="background:linear-gradient(135deg,#0ea5e9,#6366f1)">
+          {{ loop.index }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <p class="text-sm font-bold text-slate-800">{{ s.city }}, {{ s.country }}</p>
+            {% if s.over_budget %}
+            <span class="inline-flex items-center gap-1 text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+              ⚠️ Over daily budget
+            </span>
+            {% endif %}
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">{{ s.days }} day{{ 's' if s.days != 1 }} · {{ s.activities }} activit{{ 'ies' if s.activities != 1 else 'y' }}</p>
+        </div>
+        <!-- Daily rate -->
+        <div class="text-right shrink-0">
+          <p class="text-sm font-extrabold {% if s.over_budget %}text-red-600{% else %}text-slate-800{% endif %}">
+            ${{ "%.0f"|format(s.daily_rate) }}<span class="text-xs font-medium text-slate-400">/day</span>
+          </p>
+          <p class="text-xs text-slate-500">${{ "%.0f"|format(s.cost) }} total</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Add Expense ── -->
+  <div class="premium-card p-6 mb-6">
+    <h2 class="text-base font-extrabold text-slate-800 mb-4">Add Manual Expense</h2>
+    <form method="POST" action="{{ url_for('budget.add_budget_item', trip_id=trip.id) }}"
+          class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <input type="text" name="label" required placeholder="e.g. Flight tickets"
+             class="input-premium sm:col-span-1">
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold">$</span>
+        <input type="number" name="amount" required min="0" step="0.01" placeholder="0.00"
+               class="input-premium pl-7">
+      </div>
+      <select name="category" class="input-premium">
+        {% for cat in categories %}
+        <option value="{{ cat }}">{{ cat_icons.get(cat, '📦') }} {{ cat.title() }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn-premium justify-center">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Add Expense
+      </button>
+    </form>
+  </div>
+
+  <!-- ── Manual Expenses List ── -->
+  {% if trip.budget_items %}
+  <div class="premium-card p-6">
+    <h2 class="text-base font-extrabold text-slate-800 mb-4">Manual Expenses</h2>
+    <div class="space-y-2">
+      {% for item in trip.budget_items %}
+      <div class="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl hover:bg-sky-50 transition">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+             style="background:{{ cat_colors.get(item.category, '#94a3b8') }}20">
+          {{ cat_icons.get(item.category, '📦') }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-sm text-slate-700 truncate">{{ item.label }}</p>
+          <p class="text-xs text-slate-400 capitalize">{{ item.category }}</p>
+        </div>
+        <span class="font-extrabold text-slate-800">${{ "%.2f"|format(item.amount) }}</span>
+        <form method="POST" action="{{ url_for('budget.delete_budget_item', item_id=item.id) }}">
+          <button class="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const catData  = {{ manual_by_cat | tojson }};
+const stopData = {{ stop_costs | tojson }};
+const COLORS   = ['#0ea5e9','#6366f1','#f59e0b','#10b981','#94a3b8'];
+
+// ── Donut chart ──
+const pieCtx = document.getElementById('pieChart').getContext('2d');
+const pieLabels = Object.keys(catData).filter(k => catData[k] > 0);
+const pieValues = pieLabels.map(k => catData[k]);
+
+const pieGradients = pieLabels.map((_, i) => COLORS[i % COLORS.length]);
+
+new Chart(pieCtx, {
+  type: 'doughnut',
+  data: {
+    labels: pieLabels.map(k => k.charAt(0).toUpperCase() + k.slice(1)),
+    datasets: [{
+      data: pieValues,
+      backgroundColor: pieGradients,
+      borderWidth: 3,
+      borderColor: '#fff',
+      hoverOffset: 10
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '72%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` $${ctx.parsed.toFixed(0)}  (${((ctx.parsed / pieValues.reduce((a,b)=>a+b,0))*100).toFixed(1)}%)`
+        }
+      }
+    }
+  }
+});
+
+// ── Bar chart ──
+if (stopData.length > 0) {
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  const barGrad = barCtx.createLinearGradient(0, 0, 0, 250);
+  barGrad.addColorStop(0, '#0ea5e9');
+  barGrad.addColorStop(1, '#6366f1');
+
+  new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: stopData.map(s => s.city),
+      datasets: [{
+        label: 'Activity cost ($)',
+        data: stopData.map(s => s.cost),
+        backgroundColor: barGrad,
+        borderRadius: 8,
+        borderSkipped: false,
+        hoverBackgroundColor: '#0369a1'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => ` $${ctx.parsed.y.toFixed(0)}` }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: { callback: v => '$' + v }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

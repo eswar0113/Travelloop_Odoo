@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign In — Traveloop</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Left: dark editorial panel */
+    .left {
+      background: #141413;
+      background-image: url('https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=80&auto=format&fit=crop');
+      background-size: cover;
+      background-position: center;
+      width: 50%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3rem;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Dark photo overlay */
+    .left::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(20,20,19,.80);
+      z-index: 0;
+    }
+    /* Warm corner accent */
+    .left::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 40%; height: 40%;
+      background: radial-gradient(circle at 100% 100%, rgba(194,65,12,.40) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.08);
+      color: rgba(255,255,255,.65);
+      font-size: .875rem;
+      font-weight: 500;
+      background: rgba(255,255,255,.04);
+    }
+    .feature-item .icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .quote-card {
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px;
+      padding: 20px;
+      background: rgba(255,255,255,.04);
+    }
+
+    /* Right: clean form */
+    .right {
+      flex: 1;
+      background: #f5f4f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+      overflow-y: auto;
+    }
+
+    .form-card {
+      width: 100%;
+      max-width: 360px;
+      background: #fff;
+      border-radius: 18px;
+      border: 1px solid #e8e5df;
+      padding: 2.25rem;
+      box-shadow: 0 2px 16px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
+    }
+
+    .input {
+      width: 100%;
+      border: 1.5px solid #e8e5df;
+      border-radius: 10px;
+      padding: .7rem 1rem;
+      font-size: .9375rem;
+      font-family: inherit;
+      color: #141413;
+      background: #fff;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .input::placeholder { color: #c4c1bb; }
+    .input:focus { border-color: #141413; box-shadow: 0 0 0 3px rgba(20,20,19,.08); }
+
+    .btn-primary {
+      width: 100%;
+      background: #141413;
+      color: #fff;
+      font-weight: 700;
+      font-size: .9375rem;
+      font-family: inherit;
+      border: none;
+      border-radius: 10px;
+      padding: .8rem;
+      cursor: pointer;
+      transition: background .15s, transform .15s, box-shadow .15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    }
+    .btn-primary:hover {
+      background: #2a2925;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    }
+    .btn-primary:active { transform: translateY(0); }
+
+    label { font-size: .8125rem; font-weight: 600; color: #4b4945; display: block; margin-bottom: 6px; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeUp .4s ease both; }
+
+    @media (max-width: 768px) {
+      .left { display: none; }
+      .right { background: #f5f4f0; padding: 2rem 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Left panel -->
+<div class="left">
+  <div style="position:relative;z-index:1">
+    <!-- Logo -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:3.5rem">
+      <div style="width:32px;height:32px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center">
+        <svg style="width:16px;height:16px;color:#141413" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
+        </svg>
+      </div>
+      <span style="color:#fff;font-weight:800;font-size:1.0625rem;letter-spacing:-.02em">Traveloop</span>
+    </div>
+
+    <h2 style="color:#fff;font-size:2.25rem;font-weight:800;line-height:1.1;letter-spacing:-.04em;margin-bottom:1rem">
+      Plan your next<br>adventure.
+    </h2>
+    <p style="color:rgba(255,255,255,.45);font-size:.9375rem;line-height:1.65;margin-bottom:2.5rem">
+      Build beautiful multi-city itineraries, track every expense, and share your journeys.
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      {% for icon, text in [
+        ('✈️','Multi-city itinerary builder'),
+        ('💰','Budget tracker & expense breakdown'),
+        ('🌍','Public trip sharing'),
+        ('📝','Trip notes & packing lists'),
+      ] %}
+      <div class="feature-item">
+        <div class="icon">{{ icon }}</div>
+        <span>{{ text }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Testimonial -->
+  <div class="quote-card" style="position:relative;z-index:1">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:36px;height:36px;border-radius:50%;background:#c2410c;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.8125rem;flex-shrink:0">M</div>
+      <div>
+        <p style="color:#fff;font-weight:700;font-size:.875rem">Maya K.</p>
+        <p style="color:rgba(255,255,255,.4);font-size:.75rem">Solo traveller · 18 countries</p>
+      </div>
+      <div style="margin-left:auto;color:#f59e0b;font-size:.75rem">★★★★★</div>
+    </div>
+    <p style="color:rgba(255,255,255,.6);font-size:.875rem;line-height:1.6">
+      "Planned my entire 3-week Europe trip in under an hour. The budget tracker alone saved me hundreds."
+    </p>
+  </div>
+</div>
+
+<!-- Right panel -->
+<div class="right">
+  <div class="form-card fade-in">
+    <div style="margin-bottom:1.75rem">
+      <h1 style="font-size:1.5rem;font-weight:800;color:#141413;letter-spacing:-.03em;margin-bottom:4px">
+        Welcome back
+      </h1>
+      <p style="font-size:.875rem;color:#8a8680">Sign in to continue planning.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div style="margin-bottom:1rem;padding:12px 14px;border-radius:10px;font-size:.875rem;font-weight:600;
+                {% if category == 'error' %}background:#fef2f2;color:#b91c1c;border:1px solid #fecaca
+                {% else %}background:#fff7ed;color:#c2410c;border:1px solid #fed7aa{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth.login') }}" style="display:flex;flex-direction:column;gap:16px"
+          x-data="{ showPw: false }">
+
+      <div>
+        <label>Email address</label>
+        <input type="email" name="email" required autocomplete="email"
+               class="input" placeholder="you@example.com">
+      </div>
+
+      <div>
+        <label>Password</label>
+        <div style="position:relative">
+          <input :type="showPw ? 'text' : 'password'" name="password" required
+                 autocomplete="current-password" class="input"
+                 style="padding-right:2.75rem" placeholder="••••••••">
+          <button type="button" @click="showPw = !showPw"
+                  style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#c4c1bb;background:none;border:none;cursor:pointer;padding:0">
+            <svg x-show="!showPw" style="width:18px;height:18px" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            <svg x-show="showPw" style="width:18px;height:18px" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:-4px 0">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;color:#4b4945;margin-bottom:0">
+          <input type="checkbox" name="remember" style="accent-color:#141413">
+          Remember me
+        </label>
+        <a href="{{ url_for('auth.forgot_password') }}"
+           style="font-size:.8125rem;font-weight:600;color:#c2410c;text-decoration:none"
+           onmouseover="this.style.color='#9a3412'" onmouseout="this.style.color='#c2410c'">
+          Forgot password?
+        </a>
+      </div>
+
+      <button type="submit" class="btn-primary" style="margin-top:4px">Sign In</button>
+    </form>
+
+    <p style="text-align:center;margin-top:1.25rem;font-size:.875rem;color:#8a8680">
+      No account?
+      <a href="{{ url_for('auth.signup') }}"
+         style="font-weight:700;color:#141413;text-decoration:none"
+         onmouseover="this.style.color='#c2410c'" onmouseout="this.style.color='#141413'">
+        Sign up free
+      </a>
+    </p>
+  </div>
+</div>
+
+</body>
+</html>
