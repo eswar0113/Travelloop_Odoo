@@ -1,2 +1,2 @@
 [deploy]
-startCommand = "gunicorn wsgi:app"
+startCommand = "python seed_data.py && gunicorn wsgi:app"
